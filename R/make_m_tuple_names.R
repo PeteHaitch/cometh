@@ -1,10 +1,10 @@
 # TODO: Don't export this function but have it available internally
 #' Make m-tuple names
-#' 
+#'
 #' This helper function constructs m-tuple names in the correct (alphabetical) order for a given value of m
 #' @param m The size of the m-tuple. Must be an int.
 #' @keywords helper
-#' @export 
+#' @export
 #' @examples
 #' make_m_tuple_names(1L)
 #' make_m_tuple_names(2L)

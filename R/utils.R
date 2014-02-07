@@ -3,7 +3,7 @@
 
 #' An internal function
 #' @param object A CoMeth object
-#' 
+#'
 #' @return A character vector wit the names of the assays
 #' @export
 #' @note Should be an internal function. Copied from bsseq package
@@ -14,7 +14,7 @@ assayNames <- function(object) {
 # An internal function
 #' @param object A CoMeth object
 #' @param names The expected assay names
-#' 
+#'
 #' @return NULL if successful, otherwise a message
 #' @export
 #' @note Should be an internal function. Copied from bsseq package

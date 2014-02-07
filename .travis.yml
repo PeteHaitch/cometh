@@ -9,7 +9,7 @@ install:
                   biocLite();
                   biocLite('GenomicRanges', 'Biobase')"
   - ./travis-tool.sh install_deps
-  
+
 script: ./travis-tool.sh run_tests
 
 on_failure:

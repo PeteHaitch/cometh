@@ -4,7 +4,7 @@ setClass("CoMeth", contains = "SummarizedExperiment")
 # TODO: Require seqlengths or seqinfo when constructing a CoMeth
 # TODO: Make documentation more like GRanges, i.e. ?CoMeth describes the class and there is a subsection titled "Construction" that described the constructor, etc.
 #' The constructor function for cometh objects
-#' 
+#'
 #' Construct a \code{CoMeth} object. Users will generally use the \code{\link{read.comethylation}} to construct a \code{CoMeth} object. 
 #' @param seqnames Rle object, character vector, or factor containing the sequence names.
 #' @param pos A numeric matrix storing the positions of each m-tuple as a row. Thus nrow(pos) = the number of m-tuples and ncol(pos) = m.
@@ -15,7 +15,7 @@ setClass("CoMeth", contains = "SummarizedExperiment")
 #' @param strand An (optional) Rle object, character vector, or factor containing the strand information.
 #' @param seqlengths The sequence lengths of the reference genome of the sample. Must be an integer vector named with the sequence names and containing the lengths (or NA) for each level(seqnames).
 #' @param seqinfo An (optional) \code{\link[GenomicRanges]{Seqinfo}} object containing information about the reference genome of the sample
-#' 
+#'
 #' @export
 #' @seealso \code{\link{read.comethylation}}
 #' @return A \code{\link{CoMeth}} object
@@ -57,7 +57,7 @@ CoMeth <- function(seqnames, pos, counts, m, methylation_type, sample_name, stra
     stop(stop_msg)
   }
   message("There is minimal checking of the 'pos' and 'counts' matrices. E.g. no check is made that each row of 'pos' is sorted; no check is made that all entries of 'counts' and 'pos' are positive integers")
-  
+
   gr <- GRanges(seqnames = seqnames, ranges = IRanges(start = pos[, 1], end = pos[, ncol(pos)]), strand = strand, seqlengths = seqlengths, seqinfo = seqinfo)
   # Store each column of counts as a separate assay
   counts_colnames <- colnames(counts)
@@ -78,7 +78,7 @@ CoMeth <- function(seqnames, pos, counts, m, methylation_type, sample_name, stra
   colData <- DataFrame(sample_name = sample_name, m = m, methylation_type = paste0(sort(methylation_type), collapse = '/'))
   cometh <- SummarizedExperiment(assays = assays, rowData = gr, colData = colData)
   cometh <- as(cometh, "CoMeth")
-  
+
   return(cometh)
 }
 
@@ -110,10 +110,10 @@ setValidity("CoMeth", function(object) {
     msg <- validMsg(msg, "'pos' has negative entries")
   }
   # TODO: Check that each row of getPos(object) is sorted. The naive implementation "any(apply(X = getPos(object), FUN = function(x){is.unsorted(x)}, MARGIN = 1))" is very slow
-  
+
   if (is.null(msg)) {
     TRUE
-  } else { 
+  } else {
     msg
   }
 })
@@ -123,11 +123,11 @@ setMethod("sampleNames", "CoMeth", function(object) {
 })
 
 #' Get the \code{counts} from a \code{\link{CoMeth}} object
-#' 
+#'
 #' Get the counts from a \code{\link{CoMeth}} object. \code{counts} is a numeric matrix storing the number of times each co-methylation pattern is observed at each m-tuple. 
-#' 
+#'
 #' @param CoMeth a \code{\link{CoMeth}} object
-#' 
+#'
 #' @return A numeric matrix
 getCounts <- function(CoMeth) {
   if (ncol(CoMeth) > 1){
@@ -143,10 +143,10 @@ getCounts <- function(CoMeth) {
 }
 
 #' Get the \code{coverage} from a \code{\link{CoMeth}} object.
-#' 
+#'
 #' The \code{coverage} of a \code{\link{CoMeth}} object is the number of reads for each m-tuple, i.e. \code{rowSums(getCounts(CoMeth))}
 #' @param CoMeth A \code{\link{CoMeth}} object
-#' 
+#'
 #' @return A numeric vector
 #' @export
 getCoverage <- function(CoMeth) {
@@ -154,15 +154,15 @@ getCoverage <- function(CoMeth) {
     stop('Can only get counts from a CoMeth object that contains data on a single sample')
   }
   stopifnot(is(CoMeth, "CoMeth"))
-  
+
   rowSums(getCounts(CoMeth))
 }
 
 #' Get \code{m} from a \code{\link{CoMeth}} object
-#' 
+#'
 #' Get the size of m-tuples, i.e. the \code{m} in m-tuples, from a \code{\link{CoMeth}} object.
 #' @param CoMeth A CoMeth object
-#' 
+#'
 #' @return An integer
 #' @export
 getM <- function(CoMeth) {
@@ -170,17 +170,17 @@ getM <- function(CoMeth) {
     stop('Can only get counts from a CoMeth object that contains data on a single sample')
   }
   stopifnot(is(CoMeth, "CoMeth"))
-  
+
   m <- colData(CoMeth)[, 'm']
-  
+
   return(m)
 }
-  
+
 #' Obtain the positions from a CoMeth object
 #' 
 #' The \code{pos} of a \code{\link{CoMeth}} object are the positions of the cytosines that make up each m-tuple.
 #' @param CoMeth A CoMeth object
-#' 
+#'
 #' @return A matrix
 #' @export
 getPos <- function(CoMeth) {
@@ -188,7 +188,7 @@ getPos <- function(CoMeth) {
     stop('Can only get counts from a CoMeth object that contains data on a single sample')
   }
   stopifnot(is(CoMeth, "CoMeth"))
-  
+
   m <- getM(CoMeth)
   if (m == 1){
     pos  <- matrix(start(CoMeth), ncol = 1)
@@ -197,9 +197,9 @@ getPos <- function(CoMeth) {
   } else {
     pc <- grep('pos', assayNames(CoMeth))
     pos <- cbind(start(CoMeth), sapply(pc, function(pc, CoMeth){assay(CoMeth, pc)}, CoMeth = CoMeth), end(CoMeth))
-  } 
+  }
   colnames(pos) <- paste0('pos', seq_len(m))
-    
+
   return(pos)
 }
 
