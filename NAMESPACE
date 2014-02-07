@@ -1,0 +1,8 @@
+export(.checkAssayNames)
+export(CoMeth)
+export(assayNames)
+export(getCoverage)
+export(getM)
+export(getPos)
+export(make_m_tuple_names)
+export(read.comethylation)
