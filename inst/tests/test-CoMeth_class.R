@@ -1,19 +1,31 @@
 context("CoMeth constructor")
 
 make_test_data <- function(m, n){
-  test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 10), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), I)
+  test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
   seqnames <- as.character(test_data[['chr']])
-  pos <- matrix(unlist(test_data[grep('pos', names(test_data))]), ncol = m)
-  colnames(pos) <- names(test_data[grep('pos', names(test_data))])
-  counts <- matrix(unlist(test_data[grep('[MU]', names(test_data))]), ncol = 2 ^ m)
-  colnames(counts) <- names(test_data[grep('[MU]', names(test_data))])
+  pos <- lapply(test_data[grep('pos', names(test_data))], as.vector)
+  #names(pos) <- names(test_data[grep('pos', names(test_data))])
+  counts <- lapply(test_data[grep('[MU]', names(test_data))], as.vector)
+  #names(counts) <- names(test_data[grep('[MU]', names(test_data))])
   return(list(seqnames = seqnames, pos = pos, counts = counts))
 }
 
-tsv <- make_test_data(2L, 100)
+m <- 3L
+a <- make_test_data(m, 200)
+b <- make_test_data(m, 100)
+d <- make_test_data(m, 1000)
+e <- list(seqnames = list(a = a$seqnames, b = b$seqnames, d = d$seqnames), pos = list(a = a$pos, b = b$pos, d= d$pos), counts = list(a = a$counts, b = b$counts, d = d$counts))
+seqnames <- e$seqnames
+pos <- e$pos
+counts <- e$counts
+strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
+sample_names <- c('a', 'b', 'd')
+methylation_type <- 'CG'
+seqinfo <- NULL
+seqlengths <- NULL
 
-test_that("CoMeth works on good input",{
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), is_a("CoMeth"))
+test_that("CoMeth works on good input: 1 sample",{
+  expect_that(CoMeth(sample_names = 'a', seqnames = a$seqnames, pos = a$pos, counts = a$counts, m = m, methylation_type = methylation_type), is_a("CoMeth"))
   })
 
 test_that("CoMeth parameter checking works: 'seqnames'",{
