@@ -2,6 +2,7 @@
 # TODO: Make documentation more like GRanges, i.e. ?CoMeth describes the class and there is a subsection titled "Construction" that described the constructor, etc.
 # TODO: cbind, rbind, combine, comparse, %<=% (and similar). Require that 'm', 'seqinfo', 'methylation_type' are identical when rbind-ing CoMeth objects. Allow for multiple samples in a CoMeth object
 # TODO: Function collapseStrand(). Should only work with symmetric methylation_type, e.g. CG, CHG. Will be hard to do for more complication methylation_type, e.g. CG/CHG, without using the reference genome (slow). Add the 'collapse_strand' option to CoMeth constructor.
+# TODO: Perhaps simplify the description of the 'pos' and 'counts' parameters to note that these can be list of data.frame or data.frame-like objects (DataFrame) since a data.frame is just a list of lists.
 # TODO: Check for any orphan TODOs
 
 #### CoMeth class definition, constructor and validity function ####
@@ -19,41 +20,44 @@
 #' @param m An integer storing the size of the m-tuples, i.e. the \code{m} in m-tuple. Only a single value is accepted, and not a list, because \code{m} must be the same for all samples in a \code{CoMeth} object.
 #' @param methylation_type A character vector storing the type of methylation loci for these m-tuples. Possible values are "CG", "CHG", "CHH" or "CNN". Multiple values can be specified, e.g. c("CG", "CHG"). Only a single value is accepted, and not a list, because \code{methylation_type} must be the same for all samples in a \code{CoMeth} object.
 #' @param seqinfo A \code{\link[GenomicRanges]{Seqinfo}} object containing information about the reference genome of the samples. All samples must be mapped against the same reference genome, however, multiple reference genomes per sample are allowed. This is to allow for a spike-in unmethylated genome (normally lambda phage), which is a common step in a bisulfite-sequencing protocol.
-#' @param sort logical. Should the cometh object be sorted by genomic co-ordinates? Note that sorting is based soley on the coordinates of the first and last methylation loci in each m-tuple. Thus, if m > 2 the order of m-tuples on the same chromosome with the same start and end co-ordinates is random, e.g. there is no guarantee on the order of chr1:(1, 8, 10) and chr1:(1, 4, 10).
+#' @param sort_cometh logical. Should the cometh object be sorted by genomic co-ordinates? Note that sorting is based soley on the coordinates of the first and last methylation loci in each m-tuple. Thus, if m > 2 the order of m-tuples on the same chromosome with the same start and end co-ordinates is random, e.g. there is no guarantee on the order of chr1:(1, 8, 10) and chr1:(1, 4, 10).
 #'
 #' @export
+#' @note The sub-lists of 'pos' and 'counts' can in fact be data.frames since a data.frame is just a list of lists
 #' @seealso \code{\link{read.comethylation}}
 #' @return A \code{\link{CoMeth}} object
 #' @examples
 #' cat("TODO")
-CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methylation_type, seqinfo, sort = TRUE){
+CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methylation_type, seqinfo, sort_cometh = TRUE){
   if (missing(sample_names) || !identical(unique(sample_names), sample_names)){
     stop("Need 'sample_names'. Must be a character vector where each element is a unique sample name.")
   }
   
-  if (missing(seqnames) || !all(names(seqnames) %in% sample_names) || all( !all(sapply(seqnames, is.character)), !all(sapply(seqnames, is.factor)), !all(sapply(seqnames, FUN = function(x){is(x, 'Rle')})))){
+  # Must be checked before 'counts' is checked because it uses make_m_tuple_names(m)
+  if (missing(m) || !is.integer(m) || length(m) > 1 || m < 1){
+    stop("'m' must be specified and must be a single, positive integer.")
+  }
+  
+  if (missing(seqnames) || is.null(seqnames) || length(seqnames) != length(sample_names) || !all(names(seqnames) %in% sample_names) || all( !all(sapply(seqnames, is.character)), !all(sapply(seqnames, is.factor)), !all(sapply(seqnames, FUN = function(x){is(x, 'Rle')})))){
     stop("Need 'seqnames'. Must be a list of character vectors, a list of factors or an RleList object containing the sequence names. Each element of the list should be named and match one of the 'sample_names'.")
   }
   
-  if (missing(pos) || !all(names(pos) %in% sample_names) || !all(sapply(pos, is.list)) || !all(sapply(pos, function(x){sapply(x, is.integer)})) || !all(apply(sapply(pos, function(x){sapply(x, length)}), FUN = zero_range, MARGIN = 2)) || !all(sapply(pos, length) == m)){
+  if (missing(pos) || !all(names(pos) %in% sample_names) || length(pos) != length(sample_names) || !all(sapply(pos, is.list)) || !all(sapply(pos, function(x){sapply(x, is.integer)})) || !all(apply(sapply(pos, function(x){sapply(x, length)}), FUN = zero_range, MARGIN = 2)) || !all(sapply(pos, length) == m)){
     stop("Need 'pos'. Must be a list of (integer) lists. Each element of the outer-list should be named and match one of the 'sample_names'. The number of elements of each sub-list should be equal to 'm'. For a given sample, each element of the inner-list stores the positions of each m-tuple as an integer vector. E.g. pos[[2]][[1]] contains for 'sample2', all 'pos1' for each m-tuple as an integer vector.")
   }
   if (any(is.null(sapply(pos, names))) || !all(grepl('pos[0-9]', sapply(pos, names)))){
     stop("Names of each sub-list of 'pos' must be: ", paste0('pos', seq_len(m), collapse = ', '))
   }
   
-  if (missing(counts) || !all(names(counts) %in% sample_names) || !all(sapply(counts, is.list)) || !all(sapply(counts, function(x){
+  if (missing(counts) || !all(names(counts) %in% sample_names) || length(counts) != length(sample_names) || !all(sapply(counts, is.list)) || !all(sapply(counts, function(x){
     sapply(x, is.integer)
     })) || !all(apply(sapply(counts, function(x){sapply(x, length)}), FUN = zero_range, MARGIN = 2)) || !all(sapply(counts, length) == 2 ^ m)){
     stop("Need 'counts'. Must be a list of (integer) lists. Each element of the outer-list should be named and match one of the 'sample_names'. The number of elements of each sub-list should be equal to '2^m'. For a given sample, each element of the inner-list stores the number of times each co-methylation pattern is observed at each m-tuple. E.g. pos[[2]][[1]] contains for 'sample2', how many times the first co-methylation pattern was observed for each m-tuple as an integer vector.")
   }
-  if (any(is.null(sapply(counts, names))) || !all(apply(X = sapply(counts, names), FUN = function(x, m){identical(sort(x), make_m_tuple_names(m))}, MARGIN = 2, m = m))){
-    stop("Names names of each sub-list of 'counts' must be: ", paste0(make_m_tuple_names(m), collapse = ', '))
+  if (any(sapply(sapply(counts, names), is.null)) || !all(apply(X = sapply(counts, names), FUN = function(x, m){identical(sort(x), make_m_tuple_names(m))}, MARGIN = 2, m = m))){
+    stop("Names of each sub-list of 'counts' must be: ", paste0(make_m_tuple_names(m), collapse = ', '))
   }
   
-  if (!all(sapply(sample_names, FUN = function(sample_name, counts, pos){
-    nrow(counts[[sample_name]]) == nrow(pos[[sample_name]])
-  }, counts = counts, pos = pos))){
   if (!all(sapply(sample_names, FUN = function(sample_name, counts, pos){
     zero_range(c(sapply(counts[[sample_name]], length), sapply(pos[[sample_name]], length)))
     }, counts = counts, pos = pos))){
@@ -72,10 +76,6 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
     strand <- RleList(lapply(seqnames, function(x){rep('*', length(x))}))
   }
   
-  if (missing(m) || !is.integer(m) || length(m) > 1 || m < 1){
-    stop("'m' must be specified and must be a single, positive int.")
-  }
-  
   if (missing(methylation_type) || !is.character(methylation_type) || !all(methylation_type %in% c('CG', 'CHG', 'CHH', 'CNN'))){
     stop("'methylation_type' must be specified. 'methylation_type' must be 'CG', 'CHG', 'CHH' and 'CNN', or a vector of some combination of these, e.g. methylation_type = c('CG', 'CHG')")
   }
@@ -84,8 +84,8 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
     stop("'seqinfo' must be specified.")
   }
   
-  if (!isTRUEorFALSE(sort)){
-    stop("'sort' must be TRUE or FALSE")
+  if (!isTRUEorFALSE(sort_cometh)){
+    stop("'sort_cometh' must be TRUE or FALSE")
   }
   
   warning("There is minimal checking of the 'pos' and 'counts' matrices. E.g. no check is made that each row of the matrices in 'pos' is sorted; no check is made that all entries of the matrices in 'counts' and all the entries of the matrices in 'pos' are positive integers")
@@ -97,9 +97,9 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
     combined_coordinates <- matrix(unlist(pos[[sample_names[[1]]]], use.names = FALSE), ncol = m)
     combined_counts <- lapply(counts[[sample_names[1]]], as.matrix)
     for ( i in seq(from = 2, to = length(sample_names), by = 1)){
-      pair_seqnames <- c(combined_seqnames, seqnames[[sample_names[i]]])
+      pair_seqnames <- c(as.character(combined_seqnames), as.character(seqnames[[sample_names[i]]])) # as.character necessary for if seqnames are factors
       pair_strand <- c(combined_strand, strand[[sample_names[[i]]]])
-      pair_coordinates <- cbind(factor(pair_seqnames), factor(as.vector(pair_strand), levels = c('+', '-', '*')), rbind(combined_coordinates, matrix(unlist(pos[[sample_names[[i]]]], use.names = FALSE), ncol = m))) # Have to add seqnames and strand as a factor
+      pair_coordinates <- cbind(as.factor(pair_seqnames), factor(as.vector(pair_strand), levels = c('+', '-', '*')), rbind(combined_coordinates, matrix(unlist(pos[[sample_names[[i]]]], use.names = FALSE), ncol = m))) # Have to add seqnames and strand as a factor
       in_both_idx1 <- duplicated(pair_coordinates, MARGIN = 1) # Indexes *[[sample_names[i]]] (need to offset by NROW(combined_*))
       in_both_idx2 <- duplicated(pair_coordinates, MARGIN = 1, fromLast = TRUE) # Indexes combined_* (for the first nrow(combined_*) elements)
       in_both_combined_idx <- which(in_both_idx2[seq_len(nrow(combined_coordinates))])
@@ -107,7 +107,7 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
       in_just_combined_idx <- which(!in_both_idx2[seq_len(nrow(combined_coordinates))])
       in_just_new_sample_idx <- which(!in_both_idx1[seq(from = nrow(combined_coordinates) + 1, to = length(in_both_idx1), by = 1)])
       ## Always combine things in this order: (1) In both, (2) In combined_*, (3) In *[[sample_names[i]]]
-      combined_seqnames <- c(combined_seqnames[in_both_combined_idx], combined_seqnames[in_just_combined_idx], seqnames[[sample_names[i]]][in_just_new_sample_idx])
+      combined_seqnames <- c(as.character(combined_seqnames[in_both_combined_idx]), as.character(combined_seqnames[in_just_combined_idx]), as.character(seqnames[[sample_names[i]]][in_just_new_sample_idx]))
       combined_strand <- c(combined_strand[in_both_combined_idx], combined_strand[in_just_combined_idx], strand[[sample_names[i]]][in_just_new_sample_idx])
       combined_coordinates <- rbind(combined_coordinates[in_both_combined_idx, ], combined_coordinates[in_just_combined_idx, ], matrix(unlist(pos[[sample_names[[i]]]], use.names = FALSE), ncol = m)[in_just_new_sample_idx, ])
       combined_counts <- mapply(FUN = function(combined_counts, this_sample_counts, in_both_combined_idx, in_both_new_sample_idx, in_just_combined_idx, in_just_new_sample_idx){
@@ -131,11 +131,14 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
       return(x)
     }, sample_names = sample_names)
   } else{
-      # Nothing to do
+      seqnames <- seqnames[[sample_names]]
+      pos <- pos[[sample_names]]
+      counts <- lapply(counts[[sample_names]], as.matrix) # assays slots must be matrix-like objects
+      strand <- strand[[sample_names]]
   }
   
   # Construct GRanges
-  gr <- GRanges(seqnames = seqnames, ranges = IRanges(start = pos[[1]], end = pos[[m]]), strand = strand, seqlengths = seqlengths, seqinfo = seqinfo)
+  gr <- GRanges(seqnames = seqnames, ranges = IRanges(start = pos[[1]], end = pos[[m]]), strand = strand, seqinfo = seqinfo)
   # Need to store other positions if m > 2
   if (m > 2){
     extra_pos <- lapply(X = seq(from = 2, to = m - 1, by = 1), FUN = function(i, pos){
@@ -150,7 +153,7 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
   cometh <- SummarizedExperiment(assays = assays, rowData = gr, colData = colData)
   cometh <- .CoMeth(cometh, extra_pos = extra_pos)
   # Sort GRanges taking care to also sort the other variables
-  if (sort){
+  if (sort_cometh){
     cometh <- sort(cometh)
   }
   
@@ -177,7 +180,7 @@ validCoMeth <- function(object){
     msg <- validMsg(msg, "'counts' has negative entries")
   }
   ## Check that all 'pos' are non-negative
-  if (min(sapply(assays(object), min, na.rm = TRUE)) < 0) { 
+  if (min(sapply(getPos(object)[, -1], min, na.rm = TRUE)) < 0) { 
     msg <- validMsg(msg, "'pos' has negative entries")
   }
   ## Check for existance and validity of 'extra_pos' slot
@@ -186,7 +189,7 @@ validCoMeth <- function(object){
   } else{
     if ((m > 2) && (!is.list(object@extra_pos) || length(object@extra_pos) != (m - 2)) || !all(sapply(object@extra_pos, length) == nrow(object))){
       msg <- validMsg(msg, "'extra_pos' must be a list of length 'm' - 2 if 'm' > 2. Each element of 'extra_pos' must be of the same length as 'nrow(object)'")
-    } else if (colData(object)$m == 2 && length(extra_pos) != 0){
+    } else if (m == 2 && length(object@extra_pos) != 0){
         msg <- validMsg(msg, "'extra_pos' must be an empty list if 'm' = 2.")
       }
     } 
@@ -221,7 +224,7 @@ setMethod("[", c("CoMeth", "ANY", "missing"),
               warning("'drop' ignored when subsetting ", sQuote(class(x)))
             }
             if (missing(j)){
-              j <- seq_len(ncol(cometh))
+              j <- seq_len(ncol(x))
             }
             initialize(x, 
                        x[i, j, ..., drop = FALSE], 
@@ -252,38 +255,43 @@ setMethod(order, "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
   if (!isTRUEorFALSE(decreasing)){
     stop("'decreasing' must be TRUE or FALSE")
   }
+  
   args <- list(...)
+  
   if (!zero_range(sapply(args, getM))){
     stop("All 'CoMeth' objects must have the same 'm' value")
   }
   
-  if (length(args) == 1L) {
-    x <- args[[1L]]
-    do.call("order", c(cbind(as.factor(seqnames(x)), as.factor(strand(x)), start(x), plyr::quickdf(x@extra_pos), end(x)), list(na.last = na.last, decreasing = decreasing)))
+  m <- getM(args[[1]])
+  
+  if (m < 3){
+    ## Just defer to the order method defined for GRanges
+    do.call("order", sapply(args, rowData))
   } else{
-    m <- lapply(args, getM)[[1]]
-    order_args <- vector("list", (m + 2L) * length(args))
-    idx <- (m + 2L) * seq_len(length(args))
-    order_args[seq.int(from = 1, to = max(idx), by = m + 2)] <- lapply(args, function(x){
-      as.factor(seqnames(x))
-      })
-    order_args[seq.int(from = 2, to = max(idx), by = m + 2)] <- lapply(args, function(x){
-      as.factor(strand(x))
-      })
-    order_args[seq.int(from = 3, to = max(idx), by = m + 2)] <- lapply(args, start)
-    order_args[seq.int(from = 4, to = max(idx), by = m + 2) + rep(seq(0, m - 3, by = 1))] <- lapply(args, function(x){unlist(lapply(x@extra_pos, function(xx){lapply(xx, c)}))})
-    order_args[seq.int(from = 5, to = max(idx), by = m + 2)] <- lapply(args, function(x){end})
-    order_args[idx] <- lapply(args, function(x){end(x)})
-    do.call(order, c(order_args, list(na.last = na.last, decreasing = decreasing)))
+    ## Need to use an order method that takes note of the 'extra_pos' field in a CoMeth object
+    if (length(args) == 1L) {
+      x <- args[[1L]]
+      do.call("order", c(cbind(as.factor(seqnames(x)), as.factor(strand(x)), start(x), plyr::quickdf(x@extra_pos), end(x)), list(na.last = na.last, decreasing = decreasing)))
+      } else{
+      order_args <- vector("list", (m + 2L) * length(args))
+      idx <- (m + 2L) * seq_len(length(args))
+      order_args[seq.int(from = 1, to = max(idx), by = m + 2)] <- lapply(args, function(x){
+        as.factor(seqnames(x))
+        })
+      order_args[seq.int(from = 2, to = max(idx), by = m + 2)] <- lapply(args, function(x){
+        as.factor(strand(x))
+        })
+      order_args[seq.int(from = 3, to = max(idx), by = m + 2)] <- lapply(args, start)
+      order_args[seq.int(from = 4, to = max(idx), by = m + 2) + rep(seq(0, m - 3, by = 1))] <- lapply(args, function(x){unlist(lapply(x@extra_pos, function(xx){lapply(xx, c)}))})
+      order_args[seq.int(from = 5, to = max(idx), by = m + 2)] <- lapply(args, function(x){end})
+      order_args[idx] <- lapply(args, function(x){end(x)})
+      do.call(order, c(order_args, list(na.last = na.last, decreasing = decreasing)))
+    }
   }
 })
   
 setMethod(sort, "CoMeth", function(x, decreasing = FALSE, ...){
   x[order(x, decreasing = decreasing), ] 
-})
-
-setGeneric("sampleNames", function(object){
-  standardGeneric("sampleNames")
 })
 
 setMethod("sampleNames", "CoMeth", function(object) {
@@ -303,20 +311,20 @@ setReplaceMethod("sampleNames", signature = signature(object = "CoMeth", value =
 #' Obtain the \code{pos} from a \code{\link{CoMeth}} object
 #' 
 #' The \code{pos} of a \code{\link{CoMeth}} object are the genomic co-ordinates of the cytosines that make up each m-tuple.
-#' @param CoMeth A CoMeth object
+#' @param x A CoMeth object
 #'
 #' @return A DataFrame containing the seqnames and positions (columns) of each m-tuple (rows)
 #' @export
-getPos <- function(CoMeth) {
-  stopifnot(is(CoMeth, "CoMeth"))
+getPos <- function(x) {
+  stopifnot(is(x, "CoMeth"))
   
-  m <- getM(CoMeth)
+  m <- getM(x)
   if (m == 1){
-    pos  <- DataFrame(seqnames(CoMeth), start(CoMeth))
+    pos  <- DataFrame(seqnames(x), start(x))
   } else if (m == 2) {
-    pos <- DataFrame(seqnames(CoMeth), start(CoMeth), end(CoMeth))
+    pos <- DataFrame(seqnames(x), start(x), end(x))
   } else {
-    pos <- DataFrame(seqnames(CoMeth), start(CoMeth), sapply(CoMeth@extra_pos, function(x){x}), end(CoMeth))
+    pos <- DataFrame(seqnames(x), start(x), sapply(x@extra_pos, function(xx){xx}), end(x))
   }
   colnames(pos) <- c('seqnames', paste0('pos', seq_len(m))) 
   return(pos)
@@ -325,14 +333,14 @@ getPos <- function(CoMeth) {
 #' Get \code{m} from a \code{\link{CoMeth}} object
 #'
 #' Get the size of m-tuples, i.e. the \code{m} in m-tuples, from a \code{\link{CoMeth}} object.
-#' @param CoMeth A CoMeth object
+#' @param x A CoMeth object
 #'
 #' @return An integer
 #' @export
-getM <- function(CoMeth) {
-  stopifnot(is(CoMeth, "CoMeth"))
+getM <- function(x) {
+  stopifnot(is(x, "CoMeth"))
   
-  m <- colData(CoMeth)[, 'm']
+  m <- colData(x)[, 'm']
   if (!zero_range(m)){
     stop("'m' not equal for all samples in 'CoMeth' object")
   } else{
@@ -347,11 +355,11 @@ getM <- function(CoMeth) {
 #'
 #' @return An string describing the \code{methylation_type}
 #' @export
-getMethylationType <- function(CoMeth) {
-  stopifnot(is(CoMeth, "CoMeth"))
+getMethylationType <- function(x) {
+  stopifnot(is(x, "CoMeth"))
   
-  mt <- colData(object)$methylation_type[1]
-  if (!zero_range(mt)){
+  mt <- colData(x)[['methylation_type']][1]
+  if (!all(mt == mt[1])){
     stop("'methylation_type' not equal for all samples in 'CoMeth' object")
   } else{
     return(mt[1])
@@ -365,7 +373,7 @@ getMethylationType <- function(CoMeth) {
 #'
 #' @return A numeric matrix. Each column of the matrix corresponds to a sample and each row to an m-tuple.
 #' @export
-getCoverage <- function(CoMeth) {
-  stopifnot(is(CoMeth, "CoMeth"))
-  Reduce("+", assays(cometh))
+getCoverage <- function(x) {
+  stopifnot(is(x, "CoMeth"))
+  Reduce("+", assays(x))
 }

@@ -1,3 +1,4 @@
+#### Test CoMeth constructor ####
 context("CoMeth constructor")
 
 make_test_data <- function(m, n){
@@ -15,112 +16,162 @@ a <- make_test_data(m, 200)
 b <- make_test_data(m, 100)
 d <- make_test_data(m, 1000)
 e <- list(seqnames = list(a = a$seqnames, b = b$seqnames, d = d$seqnames), pos = list(a = a$pos, b = b$pos, d= d$pos), counts = list(a = a$counts, b = b$counts, d = d$counts))
-seqnames <- e$seqnames
-pos <- e$pos
-counts <- e$counts
-strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
-sample_names <- c('a', 'b', 'd')
-methylation_type <- 'CG'
-seqinfo <- NULL
-seqlengths <- NULL
+# seqnames <- e$seqnames
+# pos <- e$pos
+# counts <- e$counts
+# strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
+# sample_names <- c('a', 'b', 'd')
+# methylation_type <- 'CG'
+# seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = rep(1000 * m * 2, 3), genome = 'hg19')
+cometh <- CoMeth(sample_names = c('a', 'b', 'd'), seqnames = e[['seqnames']], pos = e[['pos']], counts = e[['counts']], strand = e[['strand']], m = m, methylation_type = 'CG', seqinfo =  Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = rep(1000 * m * 2, 3), genome = 'hg19'))
 
 test_that("CoMeth works on good input: 1 sample",{
-  expect_that(CoMeth(sample_names = 'a', seqnames = a$seqnames, pos = a$pos, counts = a$counts, m = m, methylation_type = methylation_type), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = 'a', seqnames = seqnames['a'], pos = pos['a'], counts = counts['a'], strand = strand['a'], m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
   })
 
+test_that("CoMeth works on good input: multiple sample",{
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+})
+
 test_that("CoMeth parameter checking works: 'seqnames'",{
-  expect_that(CoMeth(seqnames = Rle(tsv$seqnames), tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), is_a("CoMeth"))
-  expect_that(CoMeth(seqnames = factor(tsv$seqnames), tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), is_a("CoMeth"))
-  expect_that(CoMeth(seqnames = rle(tsv$seqnames), tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), throws_error("Need 'seqnames'. Must be an Rle object, a character vector or a factor containing the sequence names"))
-  expect_that(CoMeth(seqnames = NULL, tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), throws_error("Need 'seqnames'. Must be an Rle object, a character vector or a factor containing the sequence names"))
-  expect_that(CoMeth(tsv$pos, tsv$counts, 2L, 'CG', 'tsv'), throws_error("Need 'seqnames'. Must be an Rle object, a character vector or a factor containing the sequence names"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = RleList(seqnames), pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = lapply(seqnames, as.factor), pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  rle_seqnames <- lapply(seqnames, rle)
+  expect_that(CoMeth(sample_names = sample_names, seqnames = rle_seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'seqnames'."))  
+  null_seqnames <- NULL
+  expect_that(CoMeth(sample_names = sample_names, seqnames = null_seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'seqnames'"))
+  list_of_null_seqnames <- list(NULL)
+  expect_that(CoMeth(sample_names = sample_names, seqnames = list_of_null_seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'seqnames'"))
+  expect_that(CoMeth(sample_names = sample_names, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'seqnames'"))
 })
 
-test_that("Cometh parameter checking works: 'pos'", {
-  expect_that(CoMeth(tsv$seqnames, as.data.frame(tsv$pos), tsv$counts, 2L, 'CG', 'tsv'), throws_error("Need 'pos'. Must be a numeric matrix."))
-  expect_that(CoMeth(tsv$seqnames, as.vector(tsv$pos), tsv$counts, 2L, 'CG', 'tsv'), throws_error("Need 'pos'. Must be a numeric matrix."))
-  bad_pos <- tsv$pos
-  dimnames(bad_pos) <- NULL
-  expect_that(CoMeth(seqnames = tsv$seqnames, bad_pos, tsv$counts, 2L, 'CG', 'tsv'), throws_error("Column names of 'pos' must be: pos1, pos2, ..., posm"))
-  colnames(bad_pos) <- paste0('pos_', 1:2)
-  expect_that(CoMeth(seqnames = tsv$seqnames, bad_pos, tsv$counts, 2L, 'CG', 'tsv'), throws_error("Column names of 'pos' must be: pos1, pos2, ..., posm"))
+test_that("CoMeth parameter checking works: 'pos'", {
+  pos_missing_element <- pos[1:2]
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos_missing_element, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'pos'"))
+  pos_as_df <- lapply(pos, function(x){lapply(x, as.data.frame)})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos_as_df, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'pos'"))
+  no_name_pos <- lapply(pos, function(x){names(x) <- NULL; x})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = no_name_pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Names of each sub-list of 'pos' must be:"))  
+  wrong_name_pos <- lapply(pos, function(x){names(x) <- paste0('pos_', 1:3); x})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = wrong_name_pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Names of each sub-list of 'pos' must be:"))  
 })
 
-test_that("Cometh parameter checking works: 'counts'", {
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, as.data.frame(tsv$counts), 2L, 'CG', 'tsv'), throws_error("Need 'counts'. Must be a numeric matrix."))
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, as.data.frame(tsv$counts), 2L, 'CG', 'tsv'), throws_error("Need 'counts'. Must be a numeric matrix."))
-  bad_counts <- tsv$counts
-  dimnames(bad_counts) <- NULL
-  expect_that(CoMeth(seqnames = tsv$seqnames, tsv$pos, bad_counts, 2L, 'CG', 'tsv'), throws_error(paste0("Column names of 'counts' must be: ", paste0(make_m_tuple_names(2L), collapse = ', '))))
-  colnames(bad_counts) <- rev(paste0(make_m_tuple_names(2L)))
-  expect_that(CoMeth(seqnames = tsv$seqnames, tsv$pos, bad_counts, 2L, 'CG', 'tsv'), throws_error(paste0("Column names of 'counts' must be: ", paste0(make_m_tuple_names(2L), collapse = ', '))))
+test_that("CoMeth parameter checking works: 'counts'", {
+  rev_name_counts <- lapply(counts, function(x){names(x) <- rev(paste0(make_m_tuple_names(3L))); x})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = rev_name_counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  no_name_counts <- lapply(counts, function(x){names(x) <- NULL; x})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = no_name_counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error(" Names of each sub-list of 'counts' must be:"))
+  bad_name_counts <- lapply(counts, function(x){names(x) <- rev(paste0(make_m_tuple_names(2L))); x})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = bad_name_counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error(" Names of each sub-list of 'counts' must be:"))
 })
 
-test_that("Cometh parameter checking works: 'm'", {
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, 2, 'CG', 'tsv'), throws_error("'m' must be specified. Must be a single int and must be greater than 0"))
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, c(2L, 2L), 'CG', 'tsv'), throws_error("'m' must be specified. Must be a single int and must be greater than 0"))
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, c(2L, 3L), 'CG', 'tsv'), throws_error("'m' must be specified. Must be a single int and must be greater than 0"))
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, 2.3, 'CG', 'tsv'), throws_error("'m' must be specified. Must be a single int and must be greater than 0"))
-  expect_that(CoMeth(tsv$seqnames, tsv$pos, tsv$counts, -1L, 'CG', 'tsv'), throws_error("'m' must be specified. Must be a single int and must be greater than 0"))
-  expect_that(CoMeth(seqnames = tsv$seqnames, tsv$pos, tsv$counts, 3L, 'CG', 'tsv'), throws_error("ncol\\(pos) should be equal to m")) # Note the annoying escaping of special characters
-  expect_that(CoMeth(seqnames = tsv$seqnames, cbind(tsv$pos, tsv$pos), tsv$counts, 2L, 'CG', 'tsv'), throws_error("ncol\\(pos) should be equal to m")) # Note the annoying escaping of special characters
-  expect_that(CoMeth(seqnames = tsv$seqnames, tsv$pos, cbind(tsv$counts, tsv$counts), 2L, 'CG', 'tsv'), throws_error("ncol\\(counts) should be equal to 2\\^m")) # Note the annoying escaping of special characters
-
+test_that("CoMeth parameter checking works: 'm'", {
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = 3, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("'m' must be specified and must be a single, positive integer."))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = list(3L, 3L, 3L), methylation_type = methylation_type, seqinfo = seqinfo), throws_error("'m' must be specified and must be a single, positive integer."))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = c(3L, 3L, 3L), methylation_type = methylation_type, seqinfo = seqinfo), throws_error("'m' must be specified and must be a single, positive integer."))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = 2.3, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("'m' must be specified and must be a single, positive integer."))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = -1L, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("'m' must be specified and must be a single, positive integer."))
+  wrong_m <- 2L
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = wrong_m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("Need 'pos'."))
 })
 
-test_that("Cometh parameter checking works: 'methylation_type'", {
-  expect_that(CoMeth(seqnames = Rle(tsv$seqnames), tsv$pos, tsv$counts, 2L, c('CG', 'CHG'), 'tsv'), is_a("CoMeth"))
-  expect_that(CoMeth(seqnames = Rle(tsv$seqnames), tsv$pos, tsv$counts, 2L, c('CGG', 'CHG'), 'tsv'), throws_error("'methylation_type' must be specified and must be a character vector. 'CG', 'CHG', 'CHH' and 'CNN', or a vector of some combination of these, are the only valid 'methylation_type'")) 
-
+test_that("CoMeth parameter checking works: 'methylation_type'", {
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = c('CG', 'CHG'), seqinfo = seqinfo), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = c('CGG', 'CHG'), seqinfo = seqinfo), throws_error("'methylation_type' must be specified."))
 })
 
+test_that("CoMeth parameter checking works: 'strand'", {
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = lapply(strand, as.vector), m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = lapply(strand, as.factor), m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  null_strand <- NULL
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = null_strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
+  list_of_null_strand <- vector('list', m)
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = list_of_null_strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("If 'strand' is not NULL then it must be a list of character vectors, a list of factors or an RleList object containing the strand of each m-tuple."))
+  rle_strand <- lapply(strand, function(x){rle(as.vector(x))})
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = rle_strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo), throws_error("If 'strand' is not NULL then it must be a list of character vectors, a list of factors or an RleList object containing the strand of each m-tuple."))  
+})
+
+test_that("CoMeth parameter checking works: 'seqinfo'", {
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type), throws_error("'seqinfo' must be specified."))  
+})
+
+test_that("CoMeth parameter checking works: 'sort_cometh'", {
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = TRUE), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = FALSE), is_a("CoMeth"))
+  expect_that(CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = t), throws_error("'sort_cometh' must"))
+})
+
+
+#### UP TO HERE ####
+
+#### Test CoMeth methods and functions ####
 context("CoMeth accessors")
-tsv <- make_test_data(3L, 100)
-tsv_cometh <- CoMeth(tsv$seqnames, tsv$pos, tsv$counts, 3L, 'CG', 'tsv')
+cometh <- CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo)
+
 test_that("sampleNames works",{
-  expect_that(sampleNames(tsv_cometh), is_identical_to('tsv'))
+  expect_that(sampleNames(cometh), is_identical_to(c('a', 'b', 'd')))
 })
 
 test_that("granges works",{
-  expect_that(granges(tsv_cometh), is_a("GRanges"))
+  expect_that(granges(cometh), is_a("GRanges"))
 })
 
 test_that("ncol works",{
-  expect_that(ncol(tsv_cometh), equals(1))
+  expect_that(ncol(cometh), equals(m))
 })
-test_that("getpos works",{
-   expect_that(getPos(tsv_cometh), is_identical_to(tsv$pos))
+test_that("getPos works",{
+  expect_true(FALSE) # Need to figure out how to test this for a non-trivial example
 })
 test_that("getM works",{
-  expect_that(getM(tsv_cometh), is_identical_to(3L))
+  expect_that(getM(cometh), is_identical_to(m))
 })
 
 test_that("getCoverage works",{
-  expect_that(getCoverage(tsv_cometh), is_identical_to(rowSums(tsv$counts)))
+  expect_true(FALSE) # Need to figure out how to test this for a non-trivial example
+  #expect_that(getCoverage(tsv_cometh), is_identical_to(rowSums(tsv$counts)))
 })
 
 context("CoMeth validity")
-  tsv <- make_test_data(3L, 100)
-  good_cometh <- CoMeth(tsv$seqnames, tsv$pos, tsv$counts, 3L, 'CG', 'tsv')
 
-  test_that("validObject returns TRUE on good input", {
-    expect_that(validObject(good_cometh), is_true())
+test_that("validObject returns TRUE on good input", {
+  expect_true(validObject(cometh))
   })
 
-  test_that("validObject returns msg if 'counts' contains negative values", {
-    bad_cometh <- good_cometh
-    assay(bad_cometh, 'MMM') <- matrix(-1, ncol = 1, nrow = 100)
-    expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'counts' has negative entries"))
+test_that("validObject returns msg if 'counts' contains negative values", {
+  bad_cometh <- cometh
+  assay(bad_cometh, 'MMM') <- matrix(-1, ncol = ncol(cometh), nrow = nrow(cometh))
+  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'counts' has negative entries"))
   })
 
-  test_that("validObject returns msg if 'pos' contains negative values", {
-    bad_cometh <- good_cometh
-    assay(bad_cometh, 'pos2') <- matrix(-1, ncol = 1, nrow = 100)
-    expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'pos' has negative entries"))
+test_that("validObject returns msg if 'extra_pos' contains negative values", {
+  bad_cometh <- cometh
+  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(cometh)))
+  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'pos' has negative entries"))
+  })
+
+test_that("validObject returns msg if 'extra_pos' contains the wrong number of positions", {
+  bad_cometh <- cometh
+  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(cometh)), 'pos2' = rep(-1, nrow(cometh)))
+  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 2: 'extra_pos' must be a list of length"))
+  })
+
+test_that("validObject returns msg if 'm' = 2 and extra_pos slot doesn't contain an empty list", {
+  bad_test_data <- make_test_data(2, 100)
+  bad_cometh <- CoMeth(sample_names = 'bad', seqnames = list('bad' = bad_test_data$seqnames), pos = list('bad' = bad_test_data$pos), counts = list('bad' = bad_test_data$counts), m = 2L, strand = NULL, methylation_type = methylation_type, seqinfo = seqinfo)
+  bad_cometh@extra_pos <- list(1:100)
+  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'extra_pos' must be an empty list if 'm' = 2."))
+  })
+    
+test_that("validObject returns msg if element of 'extra_pos' is of the wrong length", {
+    bad_cometh <- cometh
+    bad_cometh@extra_pos <- list('pos2' = rep(-1, 100))
+    expect_true(FALSE)
+    #expect_that(validObject(bad_cometh), throws_error()) # Throws error but not a very helpful one
   })
 
   test_that("validObject returns msg if 'pos' are not sorted",{
-    bad_cometh <- good_cometh
-    assay(bad_cometh, 'pos2') <- matrix(1, ncol = 1, nrow = 100)
-    expect_that(validObject(bad_cometh), throws_error("Unsorted row in 'pos'"))
+    #bad_cometh <- good_cometh
+    #assay(bad_cometh, 'pos2') <- matrix(1, ncol = 1, nrow = 100)
+    expect_true(FALSE)
+    #expect_that(validObject(bad_cometh), throws_error("Unsort_comethed row in 'pos'"))
   })
