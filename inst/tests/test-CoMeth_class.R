@@ -145,30 +145,10 @@ test_that("validObject returns msg if 'counts' contains negative values", {
   expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'counts' has negative entries"))
   })
 
-test_that("validObject returns msg if 'extra_pos' contains negative values", {
+test_that("validObject returns msg if 'pos' contains negative values", {
   bad_cometh <- good_cometh
-  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(good_cometh)))
+  values(rowData(bad_cometh)) <- DataFrame('pos2' = rep(-1, nrow(good_cometh)))
   expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'pos' has negative entries"))
-  })
-
-test_that("validObject returns msg if 'extra_pos' contains the wrong number of positions", {
-  bad_cometh <- good_cometh
-  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(good_cometh)), 'pos2' = rep(-1, nrow(good_cometh)))
-  expect_that(validObject(bad_good_cometh), throws_error("invalid class “CoMeth” object: 2: 'extra_pos' must be a list of length"))
-  })
-
-test_that("validObject returns msg if 'm' = 2 and extra_pos slot doesn't contain an empty list", {
-  bad_test_data <- make_test_data(2, 100)
-  bad_cometh <- CoMeth(sample_names = 'bad', seqnames = list('bad' = bad_test_data$seqnames), pos = list('bad' = bad_test_data$pos), counts = list('bad' = bad_test_data$counts), m = 2L, strand = NULL, methylation_type = methylation_type, seqinfo = seqinfo)
-  bad_cometh@extra_pos <- list(1:100)
-  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'extra_pos' must be an empty list if 'm' = 2."))
-  })
-    
-test_that("validObject returns msg if element of 'extra_pos' is of the wrong length", {
-    bad_cometh <- good_cometh
-    bad_cometh@extra_pos <- list('pos2' = rep(-1, 100))
-    expect_true(FALSE)
-    #expect_that(validObject(bad_cometh), throws_error()) # Throws error but not a very helpful one
   })
 
   test_that("validObject returns msg if 'pos' are not sorted",{

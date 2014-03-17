@@ -104,6 +104,6 @@ zero_range <- function(x, tol = .Machine$double.eps ^ 0.5) {
     counts <- lapply(counts[[sample_names]], as.matrix) # assays slots must be matrix-like objects
     strand <- strand[[sample_names]]
   }
-  return(list(seqnames, pos, counts, strand))
+  return(list(seqnames = seqnames, pos = pos, counts = counts, strand = strand))
 }
   
