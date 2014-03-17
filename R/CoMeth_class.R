@@ -89,74 +89,32 @@ CoMeth <- function(sample_names, seqnames, pos, counts, strand = NULL, m, methyl
   }
   
   warning("There is minimal checking of the 'pos' and 'counts' matrices. E.g. no check is made that each row of the matrices in 'pos' is sorted; no check is made that all entries of the matrices in 'counts' and all the entries of the matrices in 'pos' are positive integers")
-
+  
   # Combine the list-wise data into matrix-like data whilst taking care of common and sample-specific m-tuple, i.e. filling in zeros when a sample doesn't have any observations for that m-tuple.
-  if (length(sample_names) > 1){
-    combined_seqnames <- seqnames[[sample_names[1]]]
-    combined_strand <- strand[[sample_names[[1]]]]
-    combined_coordinates <- matrix(unlist(pos[[sample_names[[1]]]], use.names = FALSE), ncol = m)
-    combined_counts <- lapply(counts[[sample_names[1]]], as.matrix)
-    for ( i in seq(from = 2, to = length(sample_names), by = 1)){
-      pair_seqnames <- c(as.character(combined_seqnames), as.character(seqnames[[sample_names[i]]])) # as.character necessary for if seqnames are factors
-      pair_strand <- c(combined_strand, strand[[sample_names[[i]]]])
-      pair_coordinates <- cbind(as.factor(pair_seqnames), factor(as.vector(pair_strand), levels = c('+', '-', '*')), rbind(combined_coordinates, matrix(unlist(pos[[sample_names[[i]]]], use.names = FALSE), ncol = m))) # Have to add seqnames and strand as a factor
-      in_both_idx1 <- duplicated(pair_coordinates, MARGIN = 1) # Indexes *[[sample_names[i]]] (need to offset by NROW(combined_*))
-      in_both_idx2 <- duplicated(pair_coordinates, MARGIN = 1, fromLast = TRUE) # Indexes combined_* (for the first nrow(combined_*) elements)
-      in_both_combined_idx <- which(in_both_idx2[seq_len(nrow(combined_coordinates))])
-      in_both_new_sample_idx <- which(in_both_idx1[seq(from = nrow(combined_coordinates) + 1, to = length(in_both_idx1), by = 1)])
-      in_just_combined_idx <- which(!in_both_idx2[seq_len(nrow(combined_coordinates))])
-      in_just_new_sample_idx <- which(!in_both_idx1[seq(from = nrow(combined_coordinates) + 1, to = length(in_both_idx1), by = 1)])
-      ## Always combine things in this order: (1) In both, (2) In combined_*, (3) In *[[sample_names[i]]]
-      combined_seqnames <- c(as.character(combined_seqnames[in_both_combined_idx]), as.character(combined_seqnames[in_just_combined_idx]), as.character(seqnames[[sample_names[i]]][in_just_new_sample_idx]))
-      combined_strand <- c(combined_strand[in_both_combined_idx], combined_strand[in_just_combined_idx], strand[[sample_names[i]]][in_just_new_sample_idx])
-      combined_coordinates <- rbind(combined_coordinates[in_both_combined_idx, ], combined_coordinates[in_just_combined_idx, ], matrix(unlist(pos[[sample_names[[i]]]], use.names = FALSE), ncol = m)[in_just_new_sample_idx, ])
-      combined_counts <- mapply(FUN = function(combined_counts, this_sample_counts, in_both_combined_idx, in_both_new_sample_idx, in_just_combined_idx, in_just_new_sample_idx){
-        val <- rbind(cbind(combined_counts[in_both_combined_idx, ], this_sample_counts[in_both_new_sample_idx]), 
-                     cbind(combined_counts[in_just_combined_idx, ], NA_integer_), 
-                     cbind(matrix(NA_integer_, nrow = length(in_just_new_sample_idx), ncol = ncol(combined_counts)), this_sample_counts[in_just_new_sample_idx]))
-        return(val)
-        }, 
-        combined_counts = combined_counts, this_sample_counts = counts[[sample_names[[i]]]], MoreArgs = list(in_both_combined_idx = in_both_combined_idx, in_both_new_sample_idx = in_both_new_sample_idx, in_just_combined_idx = in_just_combined_idx, in_just_new_sample_idx = in_just_new_sample_idx), SIMPLIFY = FALSE)
-    }
-    seqnames <- combined_seqnames
-    strand <- combined_strand
-    cc <- seq_len(ncol(combined_coordinates))
-    names(cc) <- paste0('pos', cc)
-    pos <- lapply(cc, FUN = function(cc, combined_coordinates){
-      combined_coordinates[, cc]
-      }, combined_coordinates = combined_coordinates)
-    counts <- combined_counts
-    counts <- lapply(counts, FUN = function(x, sample_names){
-      colnames(x) <- sample_names
-      return(x)
-    }, sample_names = sample_names)
-  } else{
-      seqnames <- seqnames[[sample_names]]
-      pos <- pos[[sample_names]]
-      counts <- lapply(counts[[sample_names]], as.matrix) # assays slots must be matrix-like objects
-      strand <- strand[[sample_names]]
-  }
+  combined_data <- .combine(sample_names, seqnames, pos, counts, m, strand)
   
   # Construct GRanges
-  gr <- GRanges(seqnames = seqnames, ranges = IRanges(start = pos[[1]], end = pos[[m]]), strand = strand, seqinfo = seqinfo)
+  gr <- GRanges(seqnames = combined_data[['seqnames']], ranges = IRanges(start = combined_data[['pos']][[1]], end = combined_data[['pos']][[m]]), strand = combined_data[['strand']], seqinfo = seqinfo)
   # Need to store other positions if m > 2
   if (m > 2){
     extra_pos <- lapply(X = seq(from = 2, to = m - 1, by = 1), FUN = function(i, pos){
       pos[[i]]
-      }, pos = pos)
+      }, pos = combined_data[['pos']])
     names(extra_pos) <- paste0('pos', seq(from = 2, to = m - 1, by = 1))
     } else{
       extra_pos = list()
     }
-  assays <- SimpleList(c(counts))
-  colData <- DataFrame(m = rep(m, length(sample_names)), methylation_type = rep(paste0(sort(methylation_type), collapse = '/'), length(sample_names)), row.names = sample_names)
+  assays <- SimpleList(c(combined_data[['counts']]))
+  colData <- DataFrame(m = rep(m, length(combined_data[['sample_names']])), methylation_type = rep(paste0(sort(methylation_type), collapse = '/'), length(combined_data[['sample_names']])), row.names = combined_data[['sample_names']])
   cometh <- SummarizedExperiment(assays = assays, rowData = gr, colData = colData)
   cometh <- .CoMeth(cometh, extra_pos = extra_pos)
-  # Sort GRanges taking care to also sort the other variables
+
+  # Sort CoMeth object if required
   if (sort_cometh){
     cometh <- sort(cometh)
   }
   
+  # Return CoMeth object
   return(cometh)
 }
 
@@ -216,28 +174,65 @@ setMethod(length, "CoMeth", function(x){
   nrow(x)
 })
 
+# TODO: This doesn't work if j is also specified, e.g. CoMeth[1:10, 1:3]@extra_pos[[1]] is not of length 10
+# The "[" method for a Cometh object is almost identical to that for a SummarizedExperiment object. The only difference is the for a CoMeth object we have to also take care to also subset the 'extra_pos' field.
 # i indexes m-tuples, j indexes samples
 setMethod("[", c("CoMeth", "ANY", "missing"),
           function(x, i, j, ..., drop = FALSE)
             {
-            if (!missing(drop)){
-              warning("'drop' ignored when subsetting ", sQuote(class(x)))
-            }
             if (missing(j)){
               j <- seq_len(ncol(x))
-            }
+            }            
             initialize(x, 
-                       x[i, j, ..., drop = FALSE], 
-                       extra_pos = lapply(x@extra_pos, FUN = function(xx, i, j){xx[i]}, i = i))
+                       as(x, "SummarizedExperiment")[i, j, ..., drop = drop],
+                       # x[i, j, ..., drop = drop], # Seems to be a circular definition
+                       extra_pos = lapply(x@extra_pos, FUN = function(xx, i){xx[i]}, i = i))
           })
 
-
+# The cbind method for a CoMeth object differs to that for a SummarizedExperiment. cbind allows for the objects to have different 'pos' data (getPos()) provided all objects have the same seqinfo. Samples without 'counts' data for a particular m-tuple will have the corresponding value filled with NA. The 'm' of all objects must be identical. 'methylation_type' may differ between object but the CoMeth object will have the combined 'methylation_type', e.g. cbind-ing a "CG" with "CHG" will result in a new object with a "CG/CHG" methylation_type.  sample_names must be unique across all objects being combined. The way cbind works is effectively to extract all the relevant information from the objects being combined and then create a new CoMeth object with the CoMeth constructor.
 setMethod("cbind", function(..., deparse.level = 1){
   args <- unname(list(...))
-  if (!all(sapply(args, genome) == (sapply(args, genome)[1]))){
-    # TODO: Need to allow for multiple genomes in the same "sample", e.g. human + lambda phage
-    stop("Cannot 'cbind' 'CoMeth' objects with different 'genome'")
+  
+  # Ensure that all objects have the same seqinfo. Don't want to rbind/cbind CoMeth objects from different genomes. This "merge" of the seqinfo will still allow for multiple genomes (e.g. human and lambda_phage) within the same CoMeth object provided all CoMeth objects that are being rbind-ed/cbind-ed have the same seqinfo. While it might be nice to to rbind/cbind CoMeth objects with different seqinfo in some cases (e.g. one object contains data on chr1 and another on chr2), it is a bad idea in other cases (e.g. one object contains data from hg19 and one from mm9). Rather than handling each case in rbind/cbind I will require to the user to update the seqinfo of the CoMeth in an appropriate way to allow for them to be safely rbind-ed/cbind-ed
+  try(seq_info <- do.call("merge", lapply(args, seqinfo)))
+  if (is(seq_info, "try-error")){
+    stop("Can only rbind 'CoMeth' objects with identical 'seqinfo'. See ?seqinfo for help with replacing the 'seqinfo' of a 'CoMeth' object.")
   }
+  
+  # Ensure all sample_names are unique across the objects being combined
+  sample_names <- unlist(lapply(args, sampleNames))
+  if (length(sample_names) != length(unique(sample_names))){
+    stop("'sample_names' across all CoMeth object must be unique.")
+  }
+  
+  # Ensure all objects have the same 'm'
+  m <- sapply(args, getM)
+  if (!zero_range(m)){
+    stop("Can only rbind 'CoMeth' objects with the same 'm'.")
+  }
+  
+  # If necessary, combine 'methylation_type'
+  methylation_type <- sapply(args, getMethylationType)
+  if (!all(methylation_type == methylation_type[1])){
+    warning("Combining 'CoMeth' objects with different 'methylation_type'. The 'methylation_type' of the new CoMeth object is: ", paste0(sort(unique(methylation_type)), collapse = '/'))
+  }
+  
+  cometh <- CoMeth(sample_names = sample_names, seqnames = lapply())
+})
+
+
+setMethod("rbind", function(..., deparse.level = 1){
+  args <- unname(list(...))
+  
+  # Ensure that all CoMeth objects have the same seqinfo. Don't want to rbind/cbind CoMeth objects from different genomes. This "merge" of the seqinfo will still allow for multiple genomes (e.g. human and lambda_phage) within the same CoMeth object provided all CoMeth objects that are being rbind-ed/cbind-ed have the same seqinfo. While it might be nice to to rbind/cbind CoMeth objects with different seqinfo in some cases (e.g. one object contains data on chr1 and another on chr2), it is a bad idea in other cases (e.g. one object contains data from hg19 and one from mm9). Rather than handling each case in rbind/cbind I will require to the user to update the seqinfo of the CoMeth in an appropriate way to allow for them to be safely rbind-ed/cbind-ed
+  try(seq_info <- do.call("merge", lapply(args, seqinfo)))
+  if (is(seq_info, "try-error")){
+    stop("Can only rbind 'CoMeth' objects with identical 'seqinfo'. See ?seqinfo for help with replacing the 'seqinfo' of a 'CoMeth' object.")
+  }
+  
+  
+  
+
 })
 
 # OLD VERSION: 

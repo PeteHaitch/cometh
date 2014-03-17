@@ -1,5 +1,5 @@
-#### Test CoMeth constructor ####
-context("CoMeth constructor")
+#### Define test data ####
+context("Define test data")
 
 make_test_data <- function(m, n){
   test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
@@ -16,14 +16,17 @@ a <- make_test_data(m, 200)
 b <- make_test_data(m, 100)
 d <- make_test_data(m, 1000)
 e <- list(seqnames = list(a = a$seqnames, b = b$seqnames, d = d$seqnames), pos = list(a = a$pos, b = b$pos, d= d$pos), counts = list(a = a$counts, b = b$counts, d = d$counts))
-# seqnames <- e$seqnames
-# pos <- e$pos
-# counts <- e$counts
-# strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
-# sample_names <- c('a', 'b', 'd')
-# methylation_type <- 'CG'
-# seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = rep(1000 * m * 2, 3), genome = 'hg19')
-cometh <- CoMeth(sample_names = c('a', 'b', 'd'), seqnames = e[['seqnames']], pos = e[['pos']], counts = e[['counts']], strand = e[['strand']], m = m, methylation_type = 'CG', seqinfo =  Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = rep(1000 * m * 2, 3), genome = 'hg19'))
+seqnames <- e$seqnames
+pos <- e$pos
+counts <- e$counts
+strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
+sample_names <- c('a', 'b', 'd')
+methylation_type <- 'CG'
+seq_info <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
+good_cometh <- CoMeth(sample_names = c('a', 'b', 'd'), seqnames = e[['seqnames']], pos = e[['pos']], counts = e[['counts']], strand = e[['strand']], m = m, methylation_type = 'CG', seqinfo =  Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = rep(1000 * m * 2, 3), genome = 'hg19'))
+
+#### Test CoMeth constructor ####
+context("CoMeth constructor")
 
 test_that("CoMeth works on good input: 1 sample",{
   expect_that(CoMeth(sample_names = 'a', seqnames = seqnames['a'], pos = pos['a'], counts = counts['a'], strand = strand['a'], m = m, methylation_type = methylation_type, seqinfo = seqinfo), is_a("CoMeth"))
@@ -106,24 +109,23 @@ test_that("CoMeth parameter checking works: 'sort_cometh'", {
 
 #### Test CoMeth methods and functions ####
 context("CoMeth accessors")
-cometh <- CoMeth(sample_names = sample_names, seqnames = seqnames, pos = pos, counts = counts, strand = strand, m = m, methylation_type = methylation_type, seqinfo = seqinfo)
 
 test_that("sampleNames works",{
-  expect_that(sampleNames(cometh), is_identical_to(c('a', 'b', 'd')))
+  expect_that(sampleNames(good_cometh), is_identical_to(c('a', 'b', 'd')))
 })
 
 test_that("granges works",{
-  expect_that(granges(cometh), is_a("GRanges"))
+  expect_that(granges(good_cometh), is_a("GRanges"))
 })
 
 test_that("ncol works",{
-  expect_that(ncol(cometh), equals(m))
+  expect_that(ncol(good_cometh), equals(m))
 })
 test_that("getPos works",{
   expect_true(FALSE) # Need to figure out how to test this for a non-trivial example
 })
 test_that("getM works",{
-  expect_that(getM(cometh), is_identical_to(m))
+  expect_that(getM(good_cometh), is_identical_to(m))
 })
 
 test_that("getCoverage works",{
@@ -134,25 +136,25 @@ test_that("getCoverage works",{
 context("CoMeth validity")
 
 test_that("validObject returns TRUE on good input", {
-  expect_true(validObject(cometh))
+  expect_true(validObject(good_cometh))
   })
 
 test_that("validObject returns msg if 'counts' contains negative values", {
-  bad_cometh <- cometh
-  assay(bad_cometh, 'MMM') <- matrix(-1, ncol = ncol(cometh), nrow = nrow(cometh))
+  bad_cometh <- good_cometh
+  assay(bad_cometh, 'MMM') <- matrix(-1, ncol = ncol(good_cometh), nrow = nrow(good_cometh))
   expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'counts' has negative entries"))
   })
 
 test_that("validObject returns msg if 'extra_pos' contains negative values", {
-  bad_cometh <- cometh
-  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(cometh)))
+  bad_cometh <- good_cometh
+  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(good_cometh)))
   expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'pos' has negative entries"))
   })
 
 test_that("validObject returns msg if 'extra_pos' contains the wrong number of positions", {
-  bad_cometh <- cometh
-  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(cometh)), 'pos2' = rep(-1, nrow(cometh)))
-  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 2: 'extra_pos' must be a list of length"))
+  bad_cometh <- good_cometh
+  bad_cometh@extra_pos <- list('pos2' = rep(-1, nrow(good_cometh)), 'pos2' = rep(-1, nrow(good_cometh)))
+  expect_that(validObject(bad_good_cometh), throws_error("invalid class “CoMeth” object: 2: 'extra_pos' must be a list of length"))
   })
 
 test_that("validObject returns msg if 'm' = 2 and extra_pos slot doesn't contain an empty list", {
@@ -163,7 +165,7 @@ test_that("validObject returns msg if 'm' = 2 and extra_pos slot doesn't contain
   })
     
 test_that("validObject returns msg if element of 'extra_pos' is of the wrong length", {
-    bad_cometh <- cometh
+    bad_cometh <- good_cometh
     bad_cometh@extra_pos <- list('pos2' = rep(-1, 100))
     expect_true(FALSE)
     #expect_that(validObject(bad_cometh), throws_error()) # Throws error but not a very helpful one
