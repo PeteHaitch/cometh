@@ -1,0 +1,66 @@
+---
+title: "Creating MTuples and CoMeth classes"
+author: Peter Hickey
+date: 2 April 2014
+output:
+  html_document: default
+---
+
+# Overview
+I want to define a `CoMeth` class to store methylation m-tuples, which are the output of my Python program, `comethylation`. The `CoMeth` object will need to be able to to store multiple samples in a single object across a set of common tuples. I decided to define the `CoMeth` class as an extension to the `SummarizedExperiment` class. The `rowData` of a `SummarizedExperiment` is a GRanges object, which is not suitable for storing m-tuples because m-tuples are "discrete" whereas ranges are "continous".
+
+Therefore, I need to define a `MTuples` class, which extends the `GRanges` class. I will use the `MTuples` class as the `rowData` of a `CoMeth` object. This idea was suggested to me by Michael Lawrence (https://stat.ethz.ch/pipermail/bioconductor/attachments/20140323/b8b5fcf2/attachment.pl).
+
+# `MTuples`
+An m-tuple consists of `seqname:strand:pos1:pos2:...:posm` (where `:` is used as a delimiter and `...` denotes additional `pos` fields). For example, `chr1:+:56:67:81:90` is a 4-tuple on the positive strand of chromosome 1.
+
+An m-tuple does not naturally fit into a `GRanges` object, which consists of `seqname:strand:start:end` and metadata, but it can be extended upon. The following table displays the relationship between `GRanges` fields and `MTuples` fields. Note that the differences when $m = 1$, $m = 2$ and $m \geq 3$.
+
+ `GRanges`     `MTuples` ($m = 1$)   `MTuples` ($m = 2$)      `MTuples` ($m \geq 3$)
+-----------   --------------------- --------------------- ----------------------------
+ `seqnames`    `seqnames`                `seqnames`              `seqnames`
+ `strand`      `strand`                  `strand`                `strand`
+ `start`       `pos1`                    `pos1`                  `pos1`
+ `end`         `pos1`                    `pos2`                  `posm`
+
+When $m \geq 3$ we need to also store the "extra" positions (`extraPos`), e.g. `pos2` when $m = 3$. These are stored as "non-optional metadata" via `GenomicRanges:::extraColumnSlotNames`. I'm still figuring out what the best structure is for storing the `extraPos`, e.g. `matrix`, `DataFrame`, `List`, etc.
+
+## Storing `extraPos` as a `DataFrame`
+```{r}
+library(GenomicRanges)
+.MTuple <- setClass('MTuple', contains="GRanges", representation(extraPos = "DataFrame"))
+MTuple <- function(extraPos = DataFrame(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  .MTuple(extraPos = extraPos, GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo))
+  }
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuple",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuple <- MTuple(extraPos = DataFrame(a = 1:10, b = 10:1), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuple
+```
+This produces a warning when subsetting but appears to correctly subset the `extraPos` `DataFrame`:
+```{r}
+mtuple[1:3, ]
+mtuple[1:3, ]@extraPos
+```
+But definitely "keeps safe" the `extraPos` data:
+```{r}
+mcols(mtuple) <- NULL
+mtuple
+```
+
+## Storing `extraPos` as a `matrix`
+
+## Storing `extraPos` as a `List`
+
+# A `show` method for `MTuples`
+__TODO__: I'd like to write a `show` method that makes an `MTuples` object look less like a `GRanges` object and more like a `chr:strand:pos1:pos2:..:posm`-format.
+
+# Session info
+```{r}
+sessionInfo()
+```

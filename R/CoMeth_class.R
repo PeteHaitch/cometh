@@ -225,6 +225,11 @@ validCoMeth <- function(object){
       msg <- validMsg(msg, "'pos' has negative entries")
     }
   }
+  
+  ## Check that there are no duplicate m-tuples
+  if (any(duplicated(object))){
+    msg <- validMsg(msg, "'CoMeth' object cannot contain duplicate m-tuples")
+  }
  
   ## Return validity of object
   if (is.null(msg)) {
@@ -237,6 +242,7 @@ setValidity("CoMeth", validCoMeth)
 
 #### Methods for CoMeth objects ####
 
+## show
 setMethod(show, "CoMeth", function(object){
   cat("An object of type 'CoMeth' with:\n")
   cat(paste0(" ", nrow(object), " ", getMethylationType(object), " ", getM(object), "-tuples\n"))
@@ -244,12 +250,15 @@ setMethod(show, "CoMeth", function(object){
   #callNextMethod()
 })
 
+## length
 setMethod(length, "CoMeth", function(x){
   nrow(x)
 })
 
+## "[" 
 ## "[" method for a CoMeth object is inherited from SummarizedExperiment
 
+## cbind
 ## The cbind method for a CoMeth object differs to that for a SummarizedExperiment. cbind allows for the objects to have different 'pos' data (getPos()) provided all objects have the same seqinfo. Samples without 'counts' data for a particular m-tuple will have the corresponding value filled with NA. The 'm' of all objects must be identical. 'methylation_type' may differ between object but the CoMeth object will have the combined 'methylation_type', e.g. cbind-ing a "CG" with "CHG" will result in a new object with a "CG/CHG" methylation_type.  sample_names must be unique across all objects being combined. The way cbind works is effectively to extract all the relevant information from the objects being combined and then create a new CoMeth object with the CoMeth constructor.
 setMethod("cbind", "CoMeth", function(..., deparse.level = 1){
   args <- unname(list(...))
@@ -295,7 +304,7 @@ setMethod("cbind", "CoMeth", function(..., deparse.level = 1){
   CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info)
 })
 
-
+## rbind
 ## rbind combines objects with different m-tuples and the same subjects (sampleNames). The sampleNames must match or an error is thrown. Duplicate columns of colData must contain the same data.
 ## Can't simply use the rbind method defined for a SummarizedExperiment because we also need to check  the "extra positions" before concluding that an m-tuple is unique
 setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
@@ -346,6 +355,29 @@ setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
   
   ## Use CoMeth constructor
   CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info)  
+})
+
+## compare
+## compare defers to the method defined for GRanges by compare-ing GRanges objects that are 2-tuples extracted from CoMeth m-tuples. This is consistent with the ordering defined on m-tuples (see order)
+setMethod("compare", c("CoMeth", "CoMeth"), function(x, y){
+  if (getM(x) != getM(y)){
+    stop("Cannot compare CoMeth object with different 'm'")
+  }
+  
+  m <- getM(x)
+
+  if (m > 3){
+    rowSums(sapply(seq_len(m - 1), function(i, x_pos, y_pos, x_strand, y_strand, x_seqinfo, y_seqinfo){
+      compare(GRanges(seqnames = x_pos[, 1], strand = x_strand, ranges = IRanges(start = x_pos[, i + 1], end = x_pos[, i + 2]), seqinfo = x_seqinfo), GRanges(seqnames = y_pos[, 1], strand = y_strand, ranges = IRanges(start = y_pos[, i + 1], end = y_pos[, i + 2])))}, x_pos = getPos(x), y_pos = getPos(y), x_strand = strand(x), y_strand = strand(y), x_seqinfo = seqinfo(x), y_seqinfo = seqinfo(y))) / (m - 1) # Divide by (m - 1) to account for the fact that I called compare (m - 1) times
+    } else{
+      compare(rowData(x), rowData(y))
+    }
+})
+
+## duplicated
+## duplicated checks all positions in m-tuple and the strand rather (duplicated for SummarizedExperiment only checks rowData)
+setMethod('duplicated', 'CoMeth', function(x, incomparables = FALSE, ...){
+  do.call(duplicated, list(x = DataFrame(getPos(x), strand = strand(x)), incomparables = incomparables, ... = ...))
 })
 
 ## TODO: Simplify. Just use getPos() on each object (assuming getPos returns seqnames, strand, pos1, ..., posm; where strand is a properly-ordered factor) and then use the order method defined for DataFrame
@@ -403,6 +435,19 @@ setReplaceMethod("sampleNames", signature = signature(object = "CoMeth", value =
   }
   colnames(object) <- value
   object
+})
+
+## TODO: Find out the correct way to use "clone", which is a non-exported function from GenomicRanges (emailed bioconductor help 24/03/2014)
+setReplaceMethod("mcols", signature = "CoMeth", function(x, ..., value){
+  if (any(grepl(pattern = "^pos", colnames(value)))){
+    stop("Column names of user-specified 'mcols' must not begin with 'pos'")
+  }
+  
+  GenomicRanges:::clone(x, rowData = local({
+    r <- rowData(x)
+    mcols(r) <- cbind(mcols(rowData(x)), value)
+    r
+  }))
 })
 
 #### Functions that work on CoMeth objects ####

@@ -257,6 +257,70 @@ test_that("rbind works", {
   expect_that(rbind(a1_cometh, a2_cometh_CHG), gives_warning("Combining 'CoMeth' objects with different 'methylation_type'."))
 })
 
+test_that("compare works", {
+  expect_that(zero_range(compare(good_cometh, good_cometh)), is_true())
+  expect_that(compare(m1_cometh, rev(m1_cometh)), is_identical_to(compare(rowData(m1_cometh), rev(rowData(m1_cometh)))))
+  expect_that(compare(good_cometh, m1_cometh), throws_error("Cannot compare CoMeth object with different 'm'"))
+  good_cometh_diff_seqinfo <- good_cometh
+  genome(good_cometh_diff_seqinfo) <- 'mm10'
+  expect_that(compare(good_cometh, good_cometh_diff_seqinfo), throws_error())
+  ## Test ==, <=, !=, >=, <, >
+  ## Test with 3-tuples
+  expect_that(compare(good_cometh, good_cometh) == 0, is_identical_to(good_cometh == good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) == 0, is_identical_to(good_cometh == rev(good_cometh)))
+  expect_that(compare(good_cometh, good_cometh) <= 0, is_identical_to(good_cometh <= good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) <= 0, is_identical_to(good_cometh <= rev(good_cometh)))
+  expect_that(compare(good_cometh, good_cometh) != 0, is_identical_to(good_cometh != good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) != 0, is_identical_to(good_cometh != rev(good_cometh)))
+  expect_that(compare(good_cometh, good_cometh) >= 0, is_identical_to(good_cometh >= good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) >= 0, is_identical_to(good_cometh >= rev(good_cometh)))
+  expect_that(compare(good_cometh, good_cometh) < 0, is_identical_to(good_cometh < good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) < 0, is_identical_to(good_cometh < rev(good_cometh)))
+  expect_that(compare(good_cometh, good_cometh) > 0, is_identical_to(good_cometh > good_cometh))
+  expect_that(compare(good_cometh, rev(good_cometh)) > 0, is_identical_to(good_cometh > rev(good_cometh)))
+  ## Test with 1-tuples
+  expect_that(compare(m1_cometh, m1_cometh) == 0, is_identical_to(m1_cometh == m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) == 0, is_identical_to(m1_cometh == rev(m1_cometh)))
+  expect_that(compare(m1_cometh, m1_cometh) <= 0, is_identical_to(m1_cometh <= m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) <= 0, is_identical_to(m1_cometh <= rev(m1_cometh)))
+  expect_that(compare(m1_cometh, m1_cometh) != 0, is_identical_to(m1_cometh != m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) != 0, is_identical_to(m1_cometh != rev(m1_cometh)))
+  expect_that(compare(m1_cometh, m1_cometh) >= 0, is_identical_to(m1_cometh >= m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) >= 0, is_identical_to(m1_cometh >= rev(m1_cometh)))
+  expect_that(compare(m1_cometh, m1_cometh) < 0, is_identical_to(m1_cometh < m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) < 0, is_identical_to(m1_cometh < rev(m1_cometh)))
+  expect_that(compare(m1_cometh, m1_cometh) > 0, is_identical_to(m1_cometh > m1_cometh))
+  expect_that(compare(m1_cometh, rev(m1_cometh)) > 0, is_identical_to(m1_cometh > rev(m1_cometh)))
+})
+
+test_that("dim works", {
+  expect_that(dim(good_cometh), is_identical_to(c(nrow(good_cometh), ncol(good_cometh))))
+})
+
+test_that("dimnames works", {
+  expect_that(dimnames(good_cometh), is_identical_to(list(names(rowData(good_cometh)), rownames(colData(x)))))
+})
+
+test_that("end works", {
+  expect_that(end(good_cometh), is_identical_to(end(rowData(good_cometh))))
+})
+
+test_that("duplicated works", {
+  expect_that(any(duplicated(good_cometh)), is_false())
+  expect_that(duplicated(good_cometh), not(is_identical_to(duplicated(rowData(good_cometh)))))
+})
+
+test_that("mcols works", {
+  expect_that(mcols(good_cometh), is_identical_to(DataFrame(pos2 = getPos(good_cometh)[, 3])))
+})
+
+test_that("mcols<- works", {
+  ## TODO: Write test
+  expect_that(FALSE, is_true())
+})
+
+
+
 #### OLD CODE BELOW THIS LINE ####
 
 
