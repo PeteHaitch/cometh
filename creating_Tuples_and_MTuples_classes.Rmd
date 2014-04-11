@@ -47,18 +47,19 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
             c("extraPos")
           })
 
-tuples <- Tuples(extraPos = DataFrame(a = 1:10, b = 10:1), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
-tuples
+tuples_4 <- Tuples(extraPos = DataFrame(a = seq(from = 3, to = 202, by = 2), b = seq(from = 5, to = 204, by = 2)), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_4
 ```
 This produces a warning when subsetting but appears to correctly subset the `extraPos` `DataFrame`:
 ```{r}
-tuples[1:3, ]
-tuples[1:3, ]@extraPos
+tuples_4[1:3, ]
+tuples_4[1:3, ]@extraPos
 ```
 But definitely "keeps safe" the `extraPos` data:
 ```{r}
-mcols(tuples) <- NULL
-tuples
+mcols(tuples_4) <- NULL
+tuples_4
+rm(tuples_4)
 ```
 
 ## Storing `extraPos` as a `matrix`
@@ -75,23 +76,24 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
             c("extraPos")
           })
 
-tuples <- Tuples(extraPos = matrix(c(1:10, 10:1), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
-tuples
+tuples_4 <- Tuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_4
 ```
 Subsetting appears to work correctly subset the `extraPos` `matrix`:
 ```{r}
-tuples[1:3, ]
-tuples[1:3, ]@extraPos
+tuples_4[1:3, ]
+tuples_4[1:3, ]@extraPos
 ```
 And definitely "keeps safe" the `extraPos` data:
 ```{r}
-mcols(tuples) <- NULL
-tuples
+mcols(tuples_4) <- NULL
+tuples_4
+rm(tuples_4)
 ```
 
 ## Storing `extraPos` as a `List`
 `List` objects are a very general class; I have used an `IntegerList` in this example class definition.
-```{r}
+```{r, error = TRUE}
 .Tuples <- setClass('Tuples', contains="GRanges", representation(extraPos = "IntegerList"))
 Tuples <- function(extraPos = IntegerList(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
@@ -104,24 +106,25 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
             c("extraPos")
           })
 
-tuples <- Tuples(extraPos = IntegerList(a = 1:10, b = 10:1), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
-tuples
+tuples_4 <- Tuples(extraPos = IntegerList(a = seq(from = 3, to = 202, by = 2), b = seq(from = 5, to = 204, by = 2)), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_4
 ```
 This clearly hasn't worked as I intended:
 ```{r, error = TRUE}
-tuples@extraPos
+tuples_4@extraPos
 ```
 Subsetting doesn't work:
 ```{r, error = TRUE}
-tuples[1:3, ]
-tuples[1:3, ]@extraPos
+tuples_4[1:3, ]
+tuples_4[1:3, ]@extraPos
+rm(tuples_4)
 ```
 
 ## Decision
 Using a `matrix` to store the `extraPos` gives the desired behaviour. 
 
-### Additional work
-I need to also allow for `extraPos` to be absent, when $m = 1$ or $m = 2$. 
+### What if $m < 3$?
+I need to also allow for `extraPos` to be "absent", when $m = 1$ or $m = 2$. 
 
 #### `extraPos` as `matrixOrNULL`
 I first try this by defining `extraPos` to be a `matrixOrNULL` class union. Unfortunately this doesn't work as expected:
@@ -131,7 +134,7 @@ setClassUnion("matrixOrNULL", c("matrix", "NULL"))
 Tuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
   .Tuples(extraPos = extraPos, gr)
-  } ## FIXME: Constructor explicitly requires extraPos be a matrix
+  }
 
 ## Fix the extraPos column
 setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
@@ -139,21 +142,22 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
             c("extraPos")
           })
 
-tuples_4 <- Tuples(extraPos = matrix(c(1:10, 10:1), ncol = 2, dimnames = list(NULL, c('a', 'b'))), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_4 <- Tuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
 tuples_4
-tuples_2 <- Tuples(extraPos = NULL, seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_2 <- Tuples(extraPos = NULL, seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
 tuples_2
+traceback()
 ```
-This may be due to the fact the `Tuples` constructor function explicitly calls the `matrix` constructor function, which does not allow for `NULL` values.
+This is partly caused because the `show` method does not work when `extraPos` is `NULL`. Also, the `Tuples` constructor function explicitly calls the `matrix` constructor function, which does not allow for `NULL` values.
 
-#### `extraPos` as `matrix`
-Instead, we might just keep `extraPos` as a `matrix` but use the default constructor of a `matrix` when $m = 1$ or $m = 2$, which is a $1 \times 1$ `matrix` with `r NA`:
+#### `extraPos` as `NA` `matrix`
+Instead, I keep `extraPos` as a `matrix` with 1 column filled with `NA` when $m = 1$ or $m = 2$:
 
 ```{r}
 .Tuples <- setClass('Tuples', contains="GRanges", representation(extraPos = "matrix"))
 Tuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
-  .Tuples(extraPos = extraPos, gr)
+  .Tuples(extraPos = extraPos, gr) ## QUESTION: Should I be using the non-exported GenomicRanges:::newGRanges() or the exported GRanges()
   } 
 
 ## Fix the extraPos column
@@ -162,22 +166,207 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "Tuples",
             c("extraPos")
           })
 
-tuples_4 <- Tuples(extraPos = matrix(c(1:10, 10:1), ncol = 2, dimnames = list(NULL, c('a', 'b'))), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_4 <- Tuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
 tuples_4
-tuples_2 <- Tuples(extraPos = matrix(), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)), ranges = IRanges(1:10, width = 10:1, names = head(letters,10)), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)), score = 1:10, GC = seq(1, 0, length=10), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_2 <- Tuples(extraPos = matrix(NA_integer_, nrow = 100), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
 tuples_2
+tuples_1 <- Tuples(extraPos = matrix(NA_integer_, nrow = 100), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 1), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+tuples_1
 ```
 
-But this doesn't allow for subsetting:
+Subsetting works as expected:
 ```{r, error = TRUE}
+tuples_4[1:3, ]
+tuples_4[1:3, ]@extraPos
 tuples_2[1:3, ]
+tuples_2[1:3, ]@extraPos
+tuples_1[1:3, ]
+tuples_1[1:3, ]@extraPos
 ```
-
-## TODOs
-* Enforce column names of `extraPos` `matrix`.
+A downside is the extra storage required to store `extraPos` as a `matrix`. An `Rle` is __far__ more efficient for a large number of tuples:
+```{r}
+print(object.size(matrix(NA, nrow = 10000000)), units = "auto")
+print(object.size(Rle(rep(NA, 10000000))), units = "auto")
+```
+The `Tuples` constructor produces a warning when given no arguments (whereas the `GRanges` constructor does not):
+```{r}
+Tuples()
+GRanges()
+```
 
 # A `show` method for `Tuples`
-__TODO__: I'd like to write a `show` method that makes an `Tuples` object look less like a `GRanges` object and more like a `chr:strand:pos1:pos2:..:posm`-format.
+I'd like a `show` method that makes an `Tuples` object look less like a `GRanges` object and more like tuples.
+
+This is adapted from the `show` method defined for `GRanges` objects:
+```{r}
+
+.makeNakedMatFromTuples <- function(x){
+  lx <- length(x)
+  nc <- ncol(mcols(x))
+  if (isTRUE(all(is.na(x@extraPos)))){
+    # m = 1 or 2
+    if (isTRUE(all(start(x) == end(x)))){
+      m <- 1
+      pos <- as.matrix(start(x))
+    } else{
+      m <- 2
+      pos <- cbind(start(x), end(x))
+    }
+  } else{
+    m <- ncol(x@extraPos) + 2
+    pos <- cbind(start(x), x@extraPos, end(x))
+  }
+  colnames(pos) <- paste0('pos', seq_len(m))
+  ans <- cbind(seqnames = as.character(seqnames(x)), pos, strand = as.character(strand(x)))
+  
+  ## This code is commented out because otherwise it will repeat the extraPos field in the output
+  #extraColumnNames <- GenomicRanges:::extraColumnSlotNames(x)
+  #  if (length(extraColumnNames) > 0L) {
+  #      ans <- do.call(cbind, c(list(ans), lapply(GenomicRanges:::extraColumnSlots(x), 
+  #          showAsCell)))
+  #  }
+    if (nc > 0L) {
+        tmp <- do.call(data.frame, c(lapply(mcols(x), IRanges:::showAsCell), 
+            list(check.names = FALSE)))
+        ans <- cbind(ans, `|` = rep.int("|", lx), as.matrix(tmp))
+    }
+    return(ans)
+}
+
+showTuples <- function(x, margin = "", with.classinfo = FALSE, print.seqlengths = FALSE){
+  lx <- length(x)
+  nc <- ncol(mcols(x))
+  if (isTRUE(all(is.na(x@extraPos)))){
+    # m = 1 or 2
+    if (isTRUE(all(start(x) == end(x)))){
+      m <- 1
+    } else{
+      m <- 2
+    }
+  } else{
+    m <- ncol(x@extraPos) + 2
+  }
+  
+  cat(class(x), " with ", lx, " x ", ifelse(lx == 1L, paste0(m, "-tuple"), 
+        paste0(m, "-tuples")), " and ", nc, " metadata ", ifelse(nc == 1L, 
+        "column", "columns"), ":\n", sep = "")
+  
+  
+  out <- IRanges:::makePrettyMatrixForCompactPrinting(x, .makeNakedMatFromTuples)
+  ## These lines commented out because classinfo is more complicated for Tuples objects than GRanges objects. For example, some of the `pos` information is stored in an IRanges object while some is stored in a matrix.
+  #if (with.classinfo) {
+  #    .COL2CLASS <- c(seqnames = "Rle", ranges = "IRanges", 
+  #        strand = "Rle")
+  #    extraColumnNames <- extraColumnSlotNames(x)
+  #    .COL2CLASS <- c(.COL2CLASS, getSlots(class(x))[extraColumnNames])
+  #    classinfo <- makeClassinfoRowForCompactPrinting(x, .COL2CLASS)
+  #    stopifnot(identical(colnames(classinfo), colnames(out)))
+  #    out <- rbind(classinfo, out)
+  #}
+  
+  if (nrow(out) != 0L){ 
+    rownames(out) <- paste0(margin, rownames(out))
+    }
+  print(out, quote = FALSE, right = TRUE)
+  if (print.seqlengths) {
+      cat(margin, "---\n", sep = "")
+      GenomicRanges:::showSeqlengths(x, margin = margin)
+    }
+}
+
+setMethod("show", "Tuples",function(object){
+  showTuples(object, margin="  ", with.classinfo = FALSE, print.seqlengths=TRUE)
+  })
+```
+
+Here are some examples of the `show` method:
+```{r}
+tuples_4
+tuples_2
+tuples_1
+```
+
+# TODO for `Tuples`
+* Define a more natural constructor for the `Tuples` class. Arguments should be `seqnames`, `pos`, `strand`, `...`, `seqlengths` and `seqnames`, i.e. the same as `GRanges` but with `pos` replacing the current `ranges` and `extraPos`.
+* Enforce column names of `extraPos` `matrix`.
+
+
+# `MTuples`
+Now that I have defined the `Tuples` class, I can define the `MTuples` class. An `MTuples` object is derived from the `SummarizedExperiment` class but with a `Tuples` object rather than a `GRanges` object in the `rowData` slot.
+
+```{r}
+# Source some necessary scripts
+source('R/utils.R')
+source('R/make_m_tuple_names.R')
+
+# Function to make test data
+make_test_data <- function(m, n){
+  test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
+  pos <- DataFrame(seqnames = Rle(as.character(test_data[['chr']])), lapply(test_data[grep('pos', names(test_data))], as.vector))
+  counts <- DataFrame(lapply(test_data[grep('[MU]', names(test_data))], as.vector))
+  return(list(pos = pos, counts = counts))
+}
+
+# Create some test data
+set.seed(666)
+m <- 3L
+a <- make_test_data(m, 200)
+b <- make_test_data(m, 100)
+d <- make_test_data(m, 1000)
+e <- list(pos = DataFrameList(a = a$pos, b = b$pos, d= d$pos), counts = DataFrameList(a = a$counts, b = b$counts, d = d$counts))
+#pos <- DataFrameList(a = a$pos, b = b$pos, d= d$pos)
+pos <- DataFrame(a$pos)
+#counts <-  DataFrameList(a = a$counts, b = b$counts, d = d$counts)
+counts <-  DataFrame(a$counts)
+#strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('*', 1000))
+strand <- Rle('*', 200)
+#sample_names <- c('a', 'b', 'd')
+sample_names <- c('a')
+#methylation_type <- CharacterList(a = 'CG', b = 'CG', d = 'CG')
+methylation_type <- 'CG'
+seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
+
+# MTuple class definition and constructor
+.MTuples <- setClass('MTuples', contains="SummarizedExperiment")
+MTuples <- function(m, sample_names, pos, counts, strand, methylation_type, seqinfo, sort_cometh = TRUE){
+  ## Combine the list-wise data into matrix-like data whilst taking care of common and sample-specific m-tuples, i.e. filling in zeros when a sample doesn't have any observations for that m-tuple.
+  methylation_type <- paste0(sort(unique(unlist(methylation_type))), collapse = '/')
+
+  # TODO: Re-write .combine()
+  #combined_data <- .combine(m = m, sample_names = sample_names, pos = pos, counts = counts, strand =  strand)
+  
+  ## Construct rowData of MTuples object, which is a Tuples object
+  if (m > 2){
+    tuples <- Tuples(extraPos = as.matrix(pos[, seq(from = 3, to = m + 1 - 1, by = 1)]), seqnames = as.character(pos[, 1]), ranges = IRanges(start = pos[, 2], end = pos[, m + 1]), strand = strand, seqinfo = seqinfo)
+    } else{
+      tuples <- Tuples(extraPos = matrix(NA, nrow = nrow(pos)), seqnames = as.character(pos[, 1]), ranges = IRanges(start = pos[, 2], end = pos[, m + 1]), strand = strand, seqinfo = seqinfo)
+    }
+
+  ## Construct assays of MTuples object
+  assays <- SimpleList(lapply(seq_len(ncol(counts)), function(i, counts){as.matrix(counts[, i])}, counts = counts))
+  names(assays) <- names(counts)
+  
+  ## Construct colData of MTuples object
+  colData <- DataFrame(m = rep(m, length(sample_names)), methylation_type = rep(paste0(sort(methylation_type), collapse = '/'), length(sample_names)), row.names = sample_names)
+  
+  ## Construct MTuples object
+  mtuples <- SummarizedExperiment(assays = assays, rowData = tuples, colData = colData)
+  mtuples <- .MTuples(mtuples)
+  
+  ## Return MTuples object
+  return(mtuples)
+  }
+  
+mtuples_3 <- MTuples(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = TRUE)
+```
+This seems to work as I had hoped, namely `rowData(mtuples_3)` is a `Tuples` object:
+```{r}
+mtuples_3
+rowData(mtuples_3)
+```
+
+# Questions
+* Why does the `GRanges` constructor use `Rle()`, `IRanges()`, etc. in the function arguments?
 
 # Session info
 ```{r}

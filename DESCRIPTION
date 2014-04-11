@@ -14,6 +14,7 @@ Depends:
     R (>= 3.0),
     methods,
     GenomicRanges,
-    Biobase
 biocViews: DNAMethylation
 VignetteBuilder: knitr
+Imports: Rcpp (>= 0.11.1)
+LinkingTo: Rcpp
