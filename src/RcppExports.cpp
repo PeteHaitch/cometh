@@ -5,15 +5,79 @@
 
 using namespace Rcpp;
 
-// allRowsSorted
-bool allRowsSorted(NumericMatrix A);
-RcppExport SEXP cometh_new_allRowsSorted(SEXP ASEXP) {
+// allRowsSortedCpp
+bool allRowsSortedCpp(NumericMatrix A);
+RcppExport SEXP cometh_allRowsSortedCpp(SEXP ASEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
         Rcpp::RNGScope __rngScope;
         Rcpp::traits::input_parameter< NumericMatrix >::type A(ASEXP );
-        bool __result = allRowsSorted(A);
+        bool __result = allRowsSortedCpp(A);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// candidateDuplicateMTuplesCpp
+LogicalVector candidateDuplicateMTuplesCpp(IntegerVector a, IntegerVector b, IntegerMatrix C);
+RcppExport SEXP cometh_candidateDuplicateMTuplesCpp(SEXP aSEXP, SEXP bSEXP, SEXP CSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerVector >::type a(aSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type b(bSEXP );
+        Rcpp::traits::input_parameter< IntegerMatrix >::type C(CSEXP );
+        LogicalVector __result = candidateDuplicateMTuplesCpp(a, b, C);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// compareMTuplesCpp
+IntegerVector compareMTuplesCpp(IntegerVector a, IntegerVector b, IntegerMatrix C);
+RcppExport SEXP cometh_compareMTuplesCpp(SEXP aSEXP, SEXP bSEXP, SEXP CSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerVector >::type a(aSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type b(bSEXP );
+        Rcpp::traits::input_parameter< IntegerMatrix >::type C(CSEXP );
+        IntegerVector __result = compareMTuplesCpp(a, b, C);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// rowDiffsCpp
+IntegerMatrix rowDiffsCpp(IntegerMatrix A);
+RcppExport SEXP cometh_rowDiffsCpp(SEXP ASEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerMatrix >::type A(ASEXP );
+        IntegerMatrix __result = rowDiffsCpp(A);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// rowSumsHashInternalCpp
+LogicalVector rowSumsHashInternalCpp(IntegerMatrix x);
+RcppExport SEXP cometh_rowSumsHashInternalCpp(SEXP xSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerMatrix >::type x(xSEXP );
+        LogicalVector __result = rowSumsHashInternalCpp(x);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

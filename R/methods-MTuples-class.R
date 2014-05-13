@@ -7,6 +7,8 @@
 ### Accessors
 ###
 
+#' @include AllGenerics.R
+#' @export
 setMethod("getPos", "MTuples", function(x){
   
   m <- getM(x)
@@ -28,6 +30,8 @@ setMethod("getPos", "MTuples", function(x){
   return(pos)
 })
 
+#' @include AllGenerics.R
+#' @export
 setMethod("getM", "MTuples", function(x){
   
   # The "empty" MTuples object
@@ -52,16 +56,46 @@ setMethod("getM", "MTuples", function(x){
 ### Constructor
 ###
 
-MTuples <- function(seqnames = Rle(), pos = matrix(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
-
-  ## TODO: Argument checks,
-  m <- ncol(pos)
+#' @export
+MTuples <- function(seqnames = Rle(), 
+                    pos = matrix(), 
+                    strand = Rle("*", length(seqnames)), 
+                    ...,
+                    seqlengths = NULL, 
+                    seqinfo = NULL){
+  ## Check that all required arguments are not missing
+  if (missing(seqnames)){
+    stop(sQuote("seqnames"), " missing.\nPlease see the help page for MTuples, which can accessed by typing ", 
+         sQuote("?MTuples"), 
+         " at the R prompt, for further details of this argument.")
+  }
+  if (missing(pos)){
+    stop(sQuote("pos"), " missing.\nPlease see the help page for MTuples, which can accessed by typing ", 
+         sQuote("?MTuples"), 
+         " at the R prompt, for further details of this argument.")
+  }
   
+  ## Check that all required arguments are of the correct type
+  ## Or try to coerce to the correct type
+  if (!is.matrix(pos)){
+    stop(sQuote("pos"), " must be a matrix.\nPlease see the help page for MTuples, which can accessed by typing ", sQuote("?MTuples"), " at the R prompt, for further details of this argument.") 
+  }
+  
+  ## Other argument checks are deferred to the GRanges constructor, which
+  ## is called further down.
+  m <- ncol(pos)
+
   if (!isTRUE(all(is.na(pos)))){
     if (m == 1L){
       ranges <- IRanges(start = pos[, 1L], width = 1L)
       extraPos <- matrix(NA_integer_, nrow = length(ranges))
     } else if (m == 2L){
+      ## When m = 2, need extra check that start != pos, because this isn't caught by the validity methods when a single m-tuple is passed.
+      ## Otherwise this supposed 2-tuple is silently converted to a 1-tuple.
+      ## See GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
+      if (!allRowsSortedCpp(pos)){
+        stop(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm')))
+      }
       ranges <- IRanges(start = pos[, 1L], end = pos[, 2L])
       extraPos <- matrix(NA_integer_, nrow = length(ranges))
     } else{
@@ -72,7 +106,7 @@ MTuples <- function(seqnames = Rle(), pos = matrix(), strand = Rle("*", length(s
     ranges <- IRanges()
     extraPos <- matrix()
   }
-  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, seqlengths = seqlengths, seqinfo = seqinfo, ...)
   
   new("MTuples", gr, extraPos = extraPos)
   
@@ -82,56 +116,287 @@ MTuples <- function(seqnames = Rle(), pos = matrix(), strand = Rle("*", length(s
 ### Combining
 ###
 
-# Combine 2 MTuples objects.
-# To combine more than 2 MTuples object use Reduce(comine, list), where list is a list of MTuples objects.
-setMethod("combine", c("MTuples", "MTuples"), function(x, y, ...){
-  # Idea 1: Should use the .combine function with the 'sample_names' argument set to something artificial and the 'counts' argument set to NULL
-#   sample_names <- seq_len(2)
-#   seqnames <- list(seqnames(x), seqnames(y))
-#   names(seqnames) <- sample_names
-#   pos <- list(getPos(x), getPos(y))
-#   names(pos) <- sample_names
-#   strand <- list(strand(x), strand(y))
-#   names(strand) <- sample_names
-#   counts <- NULL
-#   ## TODO: What about seqinfo and mcols?
-#   
-#   combined_data <- .combine(sample_names = sample_names, seqnames = seqnames, pos = pos, strand = strand, counts = counts)
-#   MTuples(seqnames = combined_data$seqnames, pos = combined_data$pos, combined_data$strand, ..., )
-  
-  
-  ## Idea 2: Use z <- c(x, y) and then unique(z), for a suitably defined unique method
-  ## Can actually just the unique method that MTuples objects inherit from Vector objects. 
-  
-  ## Check m is the same for both x and y
-  if (!identical(getM(x), getM(y))){
-    stop("Can only combine ", sQuote("MTuples"), " object with the same ", sQuote("m"))
-  }
-  
-  ## FIXME: "z <- c(x, y)" will not work if !identical(colnames(mcols(x)), colnames(mcols(y))).
-  z <- c(x, y)
-  ## FIXME "unique(z)" will ignore mcols(x) and mcols(y) when combining in favour of just keeping mcols(x)
-  return(unique(z))
-})
+## Use 'c', with the optional ignore.mcols argument, as inherited from GRanges. Don't define rbind, cbind or combine as these aren't defined for GRanges. 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion
 ###
 
-# None at this point.
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Filtering
-###
-
-## TODO: Filter by IPD?
+# TODO: None at this point. Coercion to GRanges, DataFrame and matrix might be useful.
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Utilities
 ###
 
-setMethod("IPD", "MTuples", function(x){
-  rowDiffsCpp(getPos(x)) # matrixStats::rowDiffs(getPos(x)) is a (slower) alternative
+#' @include AllGenerics.R
+#' @export
+setMethod("getIPD", "MTuples", function(x){
+  m <- getM(x)
+  if (m == 1L){
+    stop("It does not make sense to compute IPD when ", sQuote('m'), " = 1.")
+  } else{
+    rowDiffsCpp(getPos(x)) # matrixStats::rowDiffs(getPos(x)) is a (slower) alternative
+  }
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### compare() and related methods.
+###
+### compare() is based on the method defined for `GRanges` objects but cannot 
+### explicity inherit the method due to the `extraPos` slot in `MTuples` 
+### objects.
+### However, unlike the compare() method defined for `GRanges`, the compare() 
+### method for `MTuples` requires that both `x` and `y` have the same length.
+### I also define the element wise (aka "parallel") operators '<=' and '=='.
+### The other element wise operators (`!=`, `>=`, `<`, `>`) work out-of-the-box 
+### on `MTuples` objects via inheritance from `GRanges` -> `Vector`.
+
+# This is adapted from GenomicRanges:::.GenomicRanges.compare.
+#' @export
+.MTuples.compare <- function(x, y){
+  
+  if (length(x) != length(y)){
+    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), " objects when ",
+         sQuote('length(x)'), " != ", sQuote('length(y)'))
+  }
+  
+  ## Check 'm' is identical
+  if (getM(x) != getM(y)){
+    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), 
+         " objects with different ", sQuote('m'), ".")
+  }
+  
+  ## Pre-comparison step (see above for details).
+  ## merge() will fail if 'x' and 'y' don't have compatible underlying
+  ## sequences.
+  seqinfo <- merge(seqinfo(x), seqinfo(y))
+  seqlevels <- seqlevels(seqinfo)
+  if (any(diff(match(seqlevels(y), seqlevels)) < 0L)){
+    stop("the 2 objects to compare have ", sQuote('seqlevels'), 
+         " in incompatible orders.") # Error message differs slightly from that provided by .GenomicRanges.compare
+  }
+  ## This should only insert new seqlevels in the existing ones i.e. it
+  ## should NEVER drop or reorder existing levels
+  seqlevels(x) <- seqlevels(y) <- seqlevels
+  
+  ## This is where .MTuples.compare really differs from .GenomicRanges.compare
+  a <- as.integer(seqnames(x)) - as.integer(seqnames(y))
+  b <- as.integer(strand(x)) - as.integer(strand(y))
+  c <- getPos(x) - getPos(y)
+  
+  ## Loop over cbind(a, b, c) by row and report the first non-zero element or 
+  ## the final element.
+  ## Do this without actually forming cbind(a, b, c).
+  ## Rcpp solution is > 1000x faster than equivalent R solution when 
+  ## length(x) = 2,000,000
+  val <- compareMTuplesCpp(a, b, c)
+  
+  return(val)
+}
+
+setMethod("compare", c("MTuples", "MTuples"), function(x, y){
+  .MTuples.compare(x, y)
+})
+
+setMethod("<=", c("MTuples", "MTuples"), function(e1, e2){
+  .MTuples.compare(e1, e2) <= 0L
+})
+
+setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
+  .MTuples.compare(e1, e2) == 0L
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### duplicated()  
+###
+### Can't rely on using duplicated() via inheritance from `Vector` because 
+### `MTuples` inherits from `GRanges`, rather than from `Vector` directly.
+### Furthermore, simply deferring to the duplicated() method for GRanges would 
+### only check pos1, posm of 'pos', which is okay provided m < 3 but not if 
+### m >= 3.
+### While I could defer to the GRanges method when m < 3, I now have a fast 
+### method that works for all m.
+###
+### anyDuplicated() will be very slightly faster than any(duplicated()).
+###
+### unique() will work out-of-the-box on an `MTuples` object thanks to the 
+### method for `GRanges` objects, which inherits from `Vector` objects.
+
+## TODO: Perhaps move rev to mTuplesHashCpp where it will be faster.
+.duplicated.MTuples <- function(x, incomparables = FALSE, fromLast = FALSE){
+  if (!identical(incomparables, FALSE)){
+    stop(sQuote('duplicated'), " method for ", sQuote('MTuples'), 
+         " objects only accepts ", sQuote('incomparables = FALSE'))
+  }
+  ## Uses the "rowSums hash" approach.
+  ## It is very fast and produces identical results to 
+  ## base::duplicated.array(x, MARGIN = 1).
+  ## candidateDuplicateMTuplesCpp only returns __candidate__ duplicates.
+  ## These candidates need to be further checked using the (slower) 
+  ## base::duplicated.array method
+  
+  if (!fromLast){
+    a <- as.integer(seqnames(x))
+    b <- as.integer(strand(x))
+    C <- getPos(x)
+  } else{
+    a <- rev(as.integer(seqnames(x)))
+    b <- as.integer(strand(x))
+    C <- getPos(x)[seq.int(from = length(x), to = 1), , drop = FALSE]
+  }
+    d <- candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
+                        b = as.integer(strand(x)), 
+                        C = getPos(x))
+    d[d] <- duplicated(cbind(a[d], b[d], C[d, , drop = FALSE], 
+                             deparse.level = 0), 
+                       incomparables = incomparables, 
+                       MARGIN = 1, 
+                       fromLast = fromLast)
+  return(d)  
+}
+
+# duplicated() checks seqnames, strand and positions of each m-tuple. 
+## TODO: Is there is a need for an S3/S4 combo? If so, why?
+### S3/S4 combo for duplicated.MTuples
+#' @export
+duplicated.MTuples <- function(x, incomparables = FALSE, ...){
+  .duplicated.MTuples(x, incomparables = incomparables, ...)
+}
+#' @export
+setMethod("duplicated", "MTuples", .duplicated.MTuples)
+
+.anyDuplicated.MTuples <- function(x, incomparables = FALSE){
+  if (!identical(incomparables, FALSE)){
+    stop(sQuote('anyDuplicated'), " method for ", sQuote('MTuples'), 
+         " objects only accepts ", sQuote('incomparables = FALSE'))
+  }
+  
+  a <- as.integer(seqnames(x))
+  b <- as.integer(strand(x))
+  C <- getPos(x)
+  d <- candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
+                                    b = as.integer(strand(x)), 
+                                    C = getPos(x))
+  if (isTRUE(any(d))){
+    anyDuplicated(cbind(a[d], b[d], C[d, , drop = FALSE], deparse.level = 0))
+  } else{
+    FALSE
+  }
+}
+
+# anyDuplicated() checks seqnames, strand and positions of each m-tuple.
+# Will be very slightly faster than any(duplicated()).
+## TODO: Is there is a need for an S3/S4 combo? If so, why?
+### S3/S4 combo for duplicated.MTuples
+#' @export
+anyDuplicated.MTuples <- function(x, incomparables = FALSE, ...){
+  .anyDuplicated.MTuples(x, incomparables = incomparables, ...)
+}
+#' @export
+setMethod("anyDuplicated", "MTuples", .anyDuplicated.MTuples)
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### match()
+###
+### %in%, findMatches(), countMatches() will work out-of-the-box on `MTuples` 
+### objects thanks to the method for Vector objects.
+
+## Loosely based on 'match' method for GenomicRanges objects
+#' @export
+setMethod("match", c("MTuples", "MTuples"), 
+          function(x, table, nomatch = NA_integer_, incomparables = NULL, 
+                   ignore.strand = FALSE){
+  
+  if (!isSingleNumberOrNA(nomatch)){
+    stop(sQuote('nomatch'), " must be a single number or ", sQuote('NA'))
+  }
+  if (!is.integer(nomatch)){
+    nomatch <- as.integer(nomatch)
+  }
+  if (!is.null(incomparables)){
+    stop(sQuote('match'), " method for ", sQuote('MTuples'), 
+         " objects only accepts ", sQuote('incomparables = NULL'))
+  }
+  if (!isTRUEorFALSE(ignore.strand)){
+    stop(sQuote('ignore.strand'), " must be ", sQuote('TRUE'), " or ", 
+         sQuote('FALSE'))
+  }
+  ## Calling merge() is the way to check that 'x' and 'table' are based on the 
+  ## same reference genome.
+  merge(seqinfo(x), seqinfo(table))
+  
+  findOverlaps(x, table, type = "equal", select = "first")
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### order() and related methods.
+###
+### The order() and rank() methods for MTuples objects are consistent with the 
+### order implied by compare().
+### sort() is defined separately, rather than simply inherited from `GRanges`,
+### because it does not use the `by` argument.
+
+
+# Loosely based on 'order' method for GRanges
+#' @export
+setMethod(order, "MTuples", function(..., na.last = TRUE, decreasing = FALSE){
+  
+  if (!isTRUEorFALSE(decreasing)){
+    stop("'decreasing' must be TRUE or FALSE")
+  }
+  
+  args <- list(...)
+  
+  if (!.zero_range(sapply(args, getM))){
+    stop("All ", sQuote('MTuples'), " objects must have the same ", sQuote('m'),
+         " value")
+  }
+  
+  m <- getM(args[[1]])
+  
+  if (m < 3){
+    ## If m < 3 just defer to the order method defined for GRanges
+    ## Can't simply use callNextMethod() because (oddly) there is no order 
+    ## method defined for GRanges (rather it is defined for GenomicRanges).
+    order(do.call("c", lapply(args, function(x){as(x, "GRanges")})), 
+          na.last = na.last, decreasing = decreasing)
+  } else{
+    ## If m >= 3 then need to define an order method that takes note of the 
+    ## 'extra positions' in each m-tuple
+    order_args <- vector("list", (m + 2L) * length(args))
+    idx <- (m + 2L) * seq_len(length(args))
+    order_args[seq.int(from = 1, to = max(idx), by = m + 2)] <- lapply(args, function(x){
+      as.factor(seqnames(x))
+    })
+    order_args[seq.int(from = 2, to = max(idx), by = m + 2)] <- lapply(args, function(x){
+      as.factor(strand(x))
+    })
+    order_args[seq.int(from = 3, to = max(idx), by = m + 2)] <- lapply(args, start)
+    order_args[seq.int(from = 4, to = max(idx), by = m + 2) + rep(seq(0, m - 3, by = 1))] <- lapply(args, function(x, m){getPos(x)[, -c(1, m)]}, m = m)
+    order_args[seq.int(from = 5 + m - 3, to = max(idx), by = m + 2)] <- lapply(args, function(x){end})
+    order_args[idx] <- lapply(args, function(x){end(x)})
+    do.call(order, c(order_args, list(na.last = na.last, decreasing = decreasing)))
+  }
+})
+
+# Loosely based on 'sort' method for GRanges
+#' @export
+setMethod(sort, "MTuples", function(x, decreasing = FALSE, ignore.strand = FALSE, by){
+  
+  if (!missing(by)){
+    stop("Sorry, the ", sQuote('by'), " argument is not currently implemented.")
+  }
+  
+  if (!isTRUEorFALSE(ignore.strand)){
+    stop(sQuote('ignore.strand'), " must be ", sQuote('TRUE'), " or ", sQuote('FALSE'))
+  }
+  if (ignore.strand) {
+    x2 <- unstrand(x)
+    i <- order(x2, decreasing = decreasing)
+  } else{
+    i <- order(x, decreasing = decreasing)
+  }
+  x[i, , drop = FALSE]
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -142,7 +407,7 @@ setMethod("IPD", "MTuples", function(x){
 setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
           function(x) {
             c("extraPos")
-          })
+})
 
 ## The show method is adapted from that of GRanges
 .makeNakedMatFromMTuples <- function(x){

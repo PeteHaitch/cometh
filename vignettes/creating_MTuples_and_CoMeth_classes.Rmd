@@ -1,0 +1,269 @@
+---
+title: "Creating `MTuples` and `CoMeth` classes"
+author: Peter Hickey
+date: 2 April 2014
+output:
+  html_document:
+    toc: yes
+---
+
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Unexplained subsetting behaviour of classes based on SummarizedExperiment}
+-->
+
+# Overview
+This documents (some of) the development process for the `MTuples` and `CoMeth` classes used in the `cometh` package. __Note that the classes and methods defined here are prototypes and differ to the final versions used in the `cometh` package.__
+
+# Aim
+I want to define a `CoMeth` class to store methylation m-mtuples, which are the output of my Python program, `comethylation`. The `CoMeth` object will need to be able to to store multiple samples in a single object across a set of common mtuples. I decided to define the `CoMeth` class as an extension to the `SummarizedExperiment` class. The `rowData` of a `SummarizedExperiment` is a GRanges object, which is not suitable for storing m-mtuples because m-mtuples are "discrete" whereas ranges are "continous".
+
+Therefore, I need to define a `MTuples` class, which extends the `GRanges` class. I will use the `MTuples` class as the `rowData` of a `CoMeth` object. This idea was suggested to me by Michael Lawrence (https://stat.ethz.ch/pipermail/bioconductor/attachments/20140323/b8b5fcf2/attachment.pl).
+
+# `MTuples`
+An m-tuple consists of `seqname:strand:pos1:pos2:...:posm` (where `:` is used as a delimiter and `...` denotes additional `pos` fields). For example, `chr1:+:56:67:81:90` is a 4-tuple on the positive strand of chromosome 1.
+
+An m-tuple does not naturally fit into a `GRanges` object, which consists of `seqname:strand:start:end` and metadata, but it can be extended upon. The following table displays the relationship between `GRanges` fields and `MTuples` fields. Note that the differences when $m = 1$, $m = 2$ and $m \geq 3$.
+
+ `GRanges`     `MTuples` ($m = 1$)   `MTuples` ($m = 2$)      `MTuples` ($m \geq 3$)
+-----------   --------------------- --------------------- ----------------------------
+ `seqnames`    `seqnames`                `seqnames`              `seqnames`
+ `strand`      `strand`                  `strand`                `strand`
+ `start`       `pos1`                    `pos1`                  `pos1`
+ `end`         `pos1`                    `pos2`                  `posm`
+
+When $m \geq 3$ we need to also store the "extra" positions (`extraPos`), e.g. `pos2` when $m = 3$. These are stored as "non-optional metadata" via `GenomicRanges:::extraColumnSlotNames`. I'm still figuring out what the best structure is for storing the `extraPos`, e.g. `matrix`, `DataFrame`, `List`, etc.
+
+## Storing `extraPos` as a `DataFrame`
+```{r}
+require(GenomicRanges)
+.MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "DataFrame"))
+MTuples <- function(extraPos = DataFrame(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  .MTuples(extraPos = extraPos, gr)
+  }
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuples_4 <- MTuples(extraPos = DataFrame(a = seq(from = 3, to = 202, by = 2), b = seq(from = 5, to = 204, by = 2)), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_4
+```
+This produces a warning when subsetting but appears to correctly subset the `extraPos` `DataFrame`:
+```{r}
+mtuples_4[1:3, ]
+mtuples_4[1:3, ]@extraPos
+```
+But definitely "keeps safe" the `extraPos` data:
+```{r}
+mcols(mtuples_4) <- NULL
+mtuples_4
+rm(mtuples_4)
+```
+
+## Storing `extraPos` as a `matrix`
+```{r}
+.MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrix"))
+MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  .MTuples(extraPos = extraPos, gr)
+  }
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuples_4 <- MTuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_4
+```
+Subsetting appears to work correctly subset the `extraPos` `matrix`:
+```{r}
+mtuples_4[1:3, ]
+mtuples_4[1:3, ]@extraPos
+```
+And definitely "keeps safe" the `extraPos` data:
+```{r}
+mcols(mtuples_4) <- NULL
+mtuples_4
+rm(mtuples_4)
+```
+
+## Storing `extraPos` as a `List`
+`List` objects are a very general class; I have used an `IntegerList` in this example class definition.
+```{r, error = TRUE}
+.MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "IntegerList"))
+MTuples <- function(extraPos = IntegerList(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  .MTuples(extraPos = extraPos, gr)
+  }
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuples_4 <- MTuples(extraPos = IntegerList(a = seq(from = 3, to = 202, by = 2), b = seq(from = 5, to = 204, by = 2)), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_4
+```
+This clearly hasn't worked as I intended:
+```{r, error = TRUE}
+mtuples_4@extraPos
+```
+Subsetting doesn't work:
+```{r, error = TRUE}
+mtuples_4[1:3, ]
+mtuples_4[1:3, ]@extraPos
+rm(mtuples_4)
+```
+
+## What if $m < 3$?
+I need to also allow for `extraPos` to be "absent", when $m = 1$ or $m = 2$. 
+
+### `extraPos` as `matrixOrNULL`
+I first try this by defining `extraPos` to be a `matrixOrNULL` class union. Unfortunately this doesn't work as expected:
+```{r, error = TRUE}
+setClassUnion("matrixOrNULL", c("matrix", "NULL"))
+.MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrixOrNULL"))
+MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  .MTuples(extraPos = extraPos, gr)
+  }
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuples_4 <- MTuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_4
+mtuples_2 <- MTuples(extraPos = NULL, seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_2
+traceback()
+```
+This is partly caused because the `show` method does not work when `extraPos` is `NULL`. Also, the `MTuples` constructor function explicitly calls the `matrix` constructor function, which does not allow for `NULL` values.
+
+### `extraPos` as `matrix` of `NA`s
+Instead, I keep `extraPos` as a `matrix` with 1 column filled with `NA` when $m = 1$ or $m = 2$:
+
+```{r}
+.MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrix"))
+MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
+  gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
+  .MTuples(extraPos = extraPos, gr) ## QUESTION: Should I be using the non-exported GenomicRanges:::newGRanges() or the exported GRanges()
+  } 
+
+## Fix the extraPos column
+setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
+          function(x) {
+            c("extraPos")
+          })
+
+mtuples_4 <- MTuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(from = 5, to = 204, by = 2)), ncol = 2), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_4
+mtuples_2 <- MTuples(extraPos = matrix(NA_integer_, nrow = 100), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 7), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_2
+mtuples_1 <- MTuples(extraPos = matrix(NA_integer_, nrow = 100), seqnames = Rle(c("chr1", "chr2", "chr1", "chr3"), c(10, 30, 20, 40)), ranges = IRanges(seq(from = 1, to = 200, by = 2), width = 1), strand = Rle(strand(c("-", "+", "*", "+", "-")), c(10, 20, 20, 30, 20)), score = rnorm(100), GC = runif(100), seqinfo = Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1"))
+mtuples_1
+```
+
+Subsetting works as expected:
+```{r, error = TRUE}
+mtuples_4[1:3, ]
+mtuples_4[1:3, ]@extraPos
+mtuples_2[1:3, ]
+mtuples_2[1:3, ]@extraPos
+mtuples_1[1:3, ]
+mtuples_1[1:3, ]@extraPos
+```
+A downside is the extra storage required to store `extraPos` as a `matrix`. An `Rle` is __far__ more efficient for a large number of mtuples:
+```{r}
+print(object.size(matrix(NA, nrow = 10000000)), units = "auto")
+print(object.size(Rle(rep(NA, 10000000))), units = "auto")
+```
+The `MTuples` constructor produces a warning when given no arguments (whereas the `GRanges` constructor does not):
+```{r}
+MTuples()
+GRanges()
+```
+
+## Decision
+Using a `matrix` to store the `extraPos` gives the desired subsetting behaviour. When $m < 3$ I store the `extraPos` as a matrix of `NA`s.
+
+# `CoMeth`
+Now that I have defined the `MTuples` class, I can define the `CoMeth` class. An `CoMeth` object is derived from the `SummarizedExperiment` class but with a `MTuples` object rather than a `GRanges` object in the `rowData` slot.
+
+Firstly, I create some test data:
+```{r}
+# Function to make test data
+make_test_data <- function(m, n){
+  test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
+  pos <- DataFrame(seqnames = Rle(as.character(test_data[['chr']])), lapply(test_data[grep('pos', names(test_data))], as.vector))
+  counts <- DataFrame(lapply(test_data[grep('[MU]', names(test_data))], as.vector))
+  return(list(pos = pos, counts = counts))
+}
+
+# Create some test data
+set.seed(666)
+m <- 3L
+a <- make_test_data(m, 200)
+
+pos <- DataFrame(a$pos)
+counts <-  DataFrame(a$counts)
+strand <- Rle('*', 200)
+sample_names <- c('a')
+methylation_type <- 'CG'
+seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
+```
+
+Now, the `CoMeth` class definition and a prototype constructor. The prototype constructor can only handle a single sample:
+```{r}
+.CoMeth <- setClass('CoMeth', contains="SummarizedExperiment")
+CoMeth <- function(m, sample_names, pos, counts, strand, methylation_type, seqinfo, sort_cometh = TRUE){
+  ## Combine the list-wise data into matrix-like data whilst taking care of common and sample-specific m-mtuples, i.e. filling in zeros when a sample doesn't have any observations for that m-tuple.
+
+  ## NOTE: In the final version of the CoMeth constructor the methylation_type arguments are collapsed into a single value. These are reflected in the two commented out lines.
+  ## Similarly, a call to the internal function .combine() is made to combine data from multiple samples.
+  # methylation_type <- paste0(sort(unique(unlist(methylation_type))), collapse = '/')
+  #combined_data <- .combine(m = m, sample_names = sample_names, pos = pos, counts = counts, strand =  strand)
+  
+  ## Construct rowData of CoMeth object, which is a MTuples object
+  if (m > 2){
+    mtuples <- MTuples(extraPos = as.matrix(pos[, seq(from = 3, to = m + 1 - 1, by = 1)]), seqnames = as.character(pos[, 1]), ranges = IRanges(start = pos[, 2], end = pos[, m + 1]), strand = strand, seqinfo = seqinfo)
+    } else{
+      mtuples <- MTuples(extraPos = matrix(NA, nrow = nrow(pos)), seqnames = as.character(pos[, 1]), ranges = IRanges(start = pos[, 2], end = pos[, m + 1]), strand = strand, seqinfo = seqinfo)
+    }
+
+  ## Construct assays of CoMeth object
+  assays <- SimpleList(lapply(seq_len(ncol(counts)), function(i, counts){as.matrix(counts[, i])}, counts = counts))
+  names(assays) <- names(counts)
+  
+  ## Construct colData of CoMeth object
+  colData <- DataFrame(m = rep(m, length(sample_names)), methylation_type = rep(paste0(sort(methylation_type), collapse = '/'), length(sample_names)), row.names = sample_names)
+  
+  ## Construct CoMeth object
+  cometh <- SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData)
+  cometh <- .CoMeth(cometh)
+  
+  ## Return CoMeth object
+  return(cometh)
+  }
+  
+cometh_3 <- CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = TRUE)
+```
+This seems to work as I had hoped, namely `rowData(cometh_3)` is a `MTuples` object:
+```{r}
+cometh_3
+rowData(cometh_3)
+```
+
+# Session info
+```{r}
+sessionInfo()
+```

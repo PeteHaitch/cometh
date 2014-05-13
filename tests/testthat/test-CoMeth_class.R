@@ -1,331 +1,468 @@
-#### Define test data ####
-context("Define test data")
+## TODO: It's possible to have two SummarizedExperiments (well, CoMeth) objects that have identical slots, all.equal returns TRUE but identical returns FALSE. 
+## E.g. a <- make_test_data(3L, 10L, 3L, sim_counts = TRUE), identical(combine(a[, 1], a[, 2], a[, 3]), a)
 
-make_test_data <- function(m, n){
-  test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
-  pos <- DataFrame(seqnames = Rle(as.character(test_data[['chr']])), lapply(test_data[grep('pos', names(test_data))], as.vector))
-  counts <- DataFrame(lapply(test_data[grep('[MU]', names(test_data))], as.vector))
-  return(list(pos = pos, counts = counts))
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Define test data.
+###
+context('Define test data')
+
+## TODO: Move make_test_data() to its own R file and call it in both test-MTuples_class.R and test-CoMeth_class.R. Relatedly, figure out the best way to call this function from these test scripts.
+expect_true(FALSE)
+
+## Function to create test data. Returns a list of arguments for the MTuples constructor (if sim_counts = FALSE) or a list of arguments for the CoMeth constructor (if sim_counts = TRUE)
+make_test_data <- function(m, n, s, sim_counts = TRUE){
+  
+  ## Only simulate a single sample if using sim_counts = FALSE otherwise the number of returned m-tuples is not n
+  if (!sim_counts){
+    s <- 1
+  }
+  
+  val <- lapply(seq_len(s), FUN = function(ss, sim_counts = sim_counts){
+    p <- c(round(0.6 * n, 0), round(0.3 * n, 0), round(0.1 * n, 0))
+    seqnames <- Rle(rep(paste0('chr', c(1, 2, 'X')), times = p))
+    pos <- DataFrame(matrix(sort(sample(1:(n * m * 10), m * n, replace = FALSE)), ncol = m, byrow = TRUE, dimnames = list(NULL, paste0('pos', 1:m))))
+    if (sim_counts){
+      counts <- DataFrame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))
+      val <- list(seqnames = seqnames, pos = pos, counts = counts)
+    } else{
+      val <- list(seqnames = seqnames, pos = pos)
+    }
+    return(val)
+  }, sim_counts = sim_counts)
+  names(val) <- paste0('sample', seq_len(s))
+  
+  seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
+  if (sim_counts){
+    methylation_type <- as(rep('CG', length(val)), "CharacterList")
+    names(methylation_type) <- names(val)
+    seqnames <- RleList(lapply(val, FUN = function(x){x$seqnames}))
+    pos <- DataFrameList(lapply(val, FUN = function(x){x$pos}))
+    counts <- DataFrameList(lapply(val, FUN = function(x){x$counts}))
+    sample_names <- as(names(val), "CharacterList")
+    val <- list(sample_names = sample_names, methylation_type = methylation_type, counts = counts, seqnames = seqnames, pos = pos, seqinfo = seqinfo)
+    #val <- CoMeth(sample_names = sample_names, methylation_type = methylation_type, counts = counts, seqnames = seqnames, pos = pos, seqinfo = seqinfo, verbose = TRUE)
+  } else{
+    seqnames <- val[[1]]$seqnames
+    pos <- as.matrix(val[[1]]$pos)
+    val <- list(seqnames = seqnames, pos = pos, seqinfo = seqinfo)
+    #val <- MTuples(seqnames = seqnames, pos = pos, seqinfo = seqinfo)
+  }
+  
+  return(val)
 }
 
-set.seed(666)
-m <- 3L
-a <- make_test_data(m, 200)
-b <- make_test_data(m, 100)
-d <- make_test_data(m, 1000)
-e <- list(pos = DataFrameList(a = a$pos, b = b$pos, d= d$pos), counts = DataFrameList(a = a$counts, b = b$counts, d = d$counts))
-pos <- DataFrameList(a = a$pos, b = b$pos, d= d$pos)
-counts <-  DataFrameList(a = a$counts, b = b$counts, d = d$counts)
-strand <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('*', 1000))
-sample_names <- c('a', 'b', 'd')
-methylation_type <- CharacterList(a = 'CG', b = 'CG', d = 'CG')
-seq_info <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
-good_cometh <- CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info)
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Test CoMeth constructor.
+###
+context('CoMeth constructor')
 
-a_cometh <- CoMeth(m = m, sample_names = sample_names[1], pos = pos[1], counts = counts[1], strand = strand[1], methylation_type = methylation_type[1], seqinfo = seq_info)
-a1_cometh <- CoMeth(m = m, sample_names = sample_names[1], pos = DataFrameList(lapply(pos[1], function(x){x[1:100,]})), counts = DataFrameList(lapply(counts[1], function(x){x[1:100,]})), strand = RleList(lapply(strand[1], function(x){x[1:100]})), methylation_type = methylation_type[1], seqinfo = seq_info)
-a2_cometh <- CoMeth(m = m, sample_names = sample_names[1], pos = DataFrameList(lapply(pos[1], function(x){x[101:200,]})), counts = DataFrameList(lapply(counts[1], function(x){x[101:200,]})), strand = RleList(lapply(strand[1], function(x){x[101:200]})), methylation_type = methylation_type[1], seqinfo = seq_info)
-
-b_cometh <- CoMeth(m = m, sample_names = sample_names[2], pos = pos[2], counts = counts[2], strand = strand[2], methylation_type = methylation_type[2], seqinfo = seq_info)
-d_cometh <- CoMeth(m = m, sample_names = sample_names[3], pos = pos[3], counts = counts[3], strand = strand[3], methylation_type = methylation_type[3], seqinfo = seq_info)
-
-m1 <- make_test_data(1, 50)
-m1_cometh <- CoMeth(m = 1L, sample_names = 'm1', pos = DataFrameList(m1 = m1$pos), counts = DataFrameList(m1 = m1$count), strand = RleList(m1 = Rle('*', 50)), methylation_type = CharacterList(m1 = 'CHH'), seqinfo = seq_info)
-
-#### Test CoMeth constructor ####
-context("CoMeth constructor")
-
-test_that("CoMeth works on good input: 1 sample",{
-  expect_that(CoMeth(m = m, sample_names = 'a', pos = pos['a'], counts = counts['a'], strand = strand['a'], methylation_type = methylation_type['a'], seqinfo = seq_info), is_a("CoMeth")) # Same as a1_cometh
-  })
-
-test_that("CoMeth works on good input: multiple sample",{
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), is_a("CoMeth")) # Same as good_cometh
+test_that("CoMeth constructor returns an CoMeth object when m = 1 for a single sample", {
+  m1_s1 <- make_test_data(m = 1L, n = 10L, s = 1L, sim_counts = TRUE)
+  m1_s1 <- CoMeth(sample_names = m1_s1$sample_names, methylation_type = m1_s1$methylation_type, counts = m1_s1$counts, seqnames = m1_s1$seqnames, pos = m1_s1$pos, seqinfo = m1_s1$seqinfo)
+  expect_that(m1_s1, is_a("CoMeth"))
+  rm(m1_s1)
 })
 
-test_that("CoMeth parameter checking works: 'seqnames'",{
-  bad_seqnames_in_pos <- DataFrameList(lapply(pos, function(x){x$seqnames <- 1; x}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = bad_seqnames_in_pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("Class of columns in each DataFrame element of 'pos' must be:"))
-  no_seqnames_in_pos <- DataFrameList(lapply(pos, function(x){x[, -1]}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = no_seqnames_in_pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' is set to 3 so colnames for all elemnts of 'pos' must be:"))
+test_that("CoMeth constructor returns an CoMeth object when m = 1 for multiple samples", {
+  m1_s3 <- make_test_data(m = 1L, n = 10L, s = 3L, sim_counts = TRUE)
+  m1_s3 <- CoMeth(sample_names = m1_s3$sample_names, methylation_type = m1_s3$methylation_type, counts = m1_s3$counts, seqnames = m1_s3$seqnames, pos = m1_s3$pos, seqinfo = m1_s3$seqinfo)
+  expect_that(m1_s3, is_a("CoMeth"))
+  rm(m1_s3)
 })
 
-test_that("CoMeth parameter checking works: 'pos'", {
-  pos_missing_element <- DataFrameList(lapply(pos, function(x){x[, - 3]}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos_missing_element, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("colnames for all elemnts of 'pos' must be:"))
-  pos_short_of_rows <- DataFrameList(lapply(pos, function(x){x[-1, ]}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos_short_of_rows, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("nrow\\(counts\\) must be equal to nrow\\(pos\\)."))
-  pos_not_integer <- DataFrameList(lapply(pos, function(x){x[, 2] <- x[, 2] + 0.5; x}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos_not_integer, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("Class of columns in each DataFrame element of 'pos' must be:"))
-  expect_that(CoMeth(m = m, sample_names = sample_names, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'pos' missing"))
-  pos_bad_names <- DataFrameList(lapply(pos, function(x){colnames(x) <- c('seqnames', paste0('pos_', 1:3)); x}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos_bad_names, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' is set to 3 so colnames for all elemnts of 'pos' must be:"))
+test_that("CoMeth constructor returns an CoMeth object when m = 2 for a single sample", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  expect_that(m2_s1, is_a("CoMeth"))
+  rm(m2_s1)
 })
 
-test_that("CoMeth parameter checking works: 'counts'", {
-  counts_missing_element <- DataFrameList(lapply(counts, function(x){x[, - 3]}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts_missing_element, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("colnames for all elements of 'counts' must be:"))
-  counts_short_of_rows <- DataFrameList(lapply(counts, function(x){x[-1, ]}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts_short_of_rows, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("nrow\\(counts\\) must be equal to nrow\\(pos\\)."))
-  counts_not_integer <- DataFrameList(lapply(counts, function(x){x[, 2] <- x[, 2] + 0.5; x}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts_not_integer, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("Class of columns in each DataFrame element of 'counts' must be:"))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'counts' missing"))
-  counts_bad_names <- DataFrameList(lapply(counts, function(x){names(x) <- rev(make_m_tuple_names(3L)); x}))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts_bad_names, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("colnames for all elements of 'counts' must be:"))
+test_that("CoMeth constructor returns an CoMeth object when m = 2 for multiple samples", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(m2_s3, is_a("CoMeth"))
+  rm(m2_s3)
 })
 
-test_that("CoMeth parameter checking works: 'm'", {
-  m_not_integer <- 3
-  expect_that(CoMeth(m = m_not_integer, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' must be specified and must be a single, positive integer."))
-  m_list <- list(3L, 3L, 3L)
-  expect_that(CoMeth(m = m_list, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' must be specified and must be a single, positive integer."))
-  m_decimal <- 2.3
-  expect_that(CoMeth(m = m_decimal, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' must be specified and must be a single, positive integer."))
-  m_negative <- -1L
-  expect_that(CoMeth(m = m_negative, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' must be specified and must be a single, positive integer."))
-  wrong_m <- 2L
-  expect_that(CoMeth(m = wrong_m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info), throws_error("'m' is set to 2 so colnames for all elemnts of 'pos' must be:"))
+test_that("CoMeth constructor returns an CoMeth object when m >= 2 for a single sample", {
+  m3_s1 <- make_test_data(m = 3L, n = 10L, s = 1L, sim_counts = TRUE)
+  m3_s1 <- CoMeth(sample_names = m3_s1$sample_names, methylation_type = m3_s1$methylation_type, counts = m3_s1$counts, seqnames = m3_s1$seqnames, pos = m3_s1$pos, seqinfo = m3_s1$seqinfo)
+  expect_that(m3_s1, is_a("CoMeth"))
+  rm(m3_s1)
+  m4_s1 <- make_test_data(m = 4L, n = 10L, s = 1L, sim_counts = TRUE)
+  m4_s1 <- CoMeth(sample_names = m4_s1$sample_names, methylation_type = m4_s1$methylation_type, counts = m4_s1$counts, seqnames = m4_s1$seqnames, pos = m4_s1$pos, seqinfo = m4_s1$seqinfo)
+  expect_that(m4_s1, is_a("CoMeth"))
+  rm(m4_s1)
+})
+
+test_that("CoMeth constructor returns an CoMeth object when m >= 2 for multiple samples", {
+  m3_s3 <- make_test_data(m = 3L, n = 10L, s = 3L, sim_counts = TRUE)
+  m3_s3 <- CoMeth(sample_names = m3_s3$sample_names, methylation_type = m3_s3$methylation_type, counts = m3_s3$counts, seqnames = m3_s3$seqnames, pos = m3_s3$pos, seqinfo = m3_s3$seqinfo)
+  expect_that(m3_s3, is_a("CoMeth"))
+  rm(m3_s3)
+  m4_s3 <- make_test_data(m = 4L, n = 10L, s = 3L, sim_counts = TRUE)
+  m4_s3 <- CoMeth(sample_names = m4_s3$sample_names, methylation_type = m4_s3$methylation_type, counts = m4_s3$counts, seqnames = m4_s3$seqnames, pos = m4_s3$pos, seqinfo = m4_s3$seqinfo)
+  expect_that(m4_s3, is_a("CoMeth"))
+  rm(m4_s3)  
+})
+
+test_that("CoMeth parameter checking works: 'sample_names'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘sample_names’ missing."))
+  expect_that(CoMeth(sample_names = unlist(m2_s3$sample_names), methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘sample_names’ must be a ‘CharacterList’."))
+  expect_that(CoMeth(sample_names = as(rep('sample_1', 3), "CharacterList"), methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Each element of ‘sample_names’ must be unique."))
+  rm(m2_s3)
 })
 
 test_that("CoMeth parameter checking works: 'methylation_type'", {
-  multiple_methylation_types <- CharacterList(a = 'CG', b = 'CG', d = c('CHG', 'CG'))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = multiple_methylation_types, seqinfo = seq_info), is_a("CoMeth"))
-  bad_methylation_types <- CharacterList(a = 'CA', b = 'CG', d = 'CG')
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = bad_methylation_types, seqinfo = seq_info), throws_error("'methylation_type' for each sample must be 'CG', 'CHG', 'CHH' and 'CNN' or a vector of some combination of these, e.g. "))  
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, , seqinfo = seq_info), throws_error("'methylation_type' missing"))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘methylation_type’ missing."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = as.vector(m2_s3$methylation_type), counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘methylation_type’ must be a ‘CharacterList’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = unlist(m2_s3$methylation_type), counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘methylation_type’ must be a ‘CharacterList’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type[1:2], counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Names of ‘methylation_type’ must match those in ‘sample_names’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = CharacterList(sample1 = 'CG', sample2 = 'CpG', sample3 = "CHG"), counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘methylation_type’ for each sample must be ‘CG’, ‘CHG’, ‘CHH’ or ‘CNN’, or a vector of some combination of these, e.g., ‘c\\('CG', 'CHG'\\)’"))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = CharacterList(sample1 = 'CG', sample2 = c('CG', 'CHH'), sample3 = "CHG"), counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), gives_warning("The supplied ‘methylation_type’ parameter says that samples contain data for different methylation types. The union of these methylation types will be used as the ‘methylation_type’ of the returned ‘CoMeth’ object."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = CharacterList(sample1 = 'CG', sample2 = c('CG', 'CHH'), sample3 = "CHH"), counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), gives_warning("The supplied ‘methylation_type’ parameter says that samples contain data for different methylation types. The union of these methylation types will be used as the ‘methylation_type’ of the returned ‘CoMeth’ object."))
+  rm(m2_s3)
 })
 
-test_that("CoMeth parameter checking works: 'strand'", {
-  strand_with_plus_and_star <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('+', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_plus_and_star, methylation_type = methylation_type, seqinfo = seq_info), gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'."))
-  strand_with_minus_and_star <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('-', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_minus_and_star, methylation_type = methylation_type, seqinfo = seq_info), gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'."))
-  strand_with_plus_and_minus_and_star <- RleList(a = Rle('*', 200), b = Rle('-', 100), d = Rle('+', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_plus_and_minus_and_star, methylation_type = methylation_type, seqinfo = seq_info), gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'."))
-  strand_with_plus_and_minus <- RleList(a = Rle('+', 200), b = Rle('-', 100), d = Rle('+', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_plus_and_minus, methylation_type = methylation_type, seqinfo = seq_info), not(gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'.")))
-  strand_with_star <- RleList(a = Rle('*', 200), b = Rle('*', 100), d = Rle('*', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_star, methylation_type = methylation_type, seqinfo = seq_info), not(gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'.")))
-  strand_with_plus <- RleList(a = Rle('+', 200), b = Rle('+', 100), d = Rle('+', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_plus, methylation_type = methylation_type, seqinfo = seq_info), not(gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'.")))  
-  strand_with_minus <- RleList(a = Rle('-', 200), b = Rle('-', 100), d = Rle('-', 1000))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_with_minus, methylation_type = methylation_type, seqinfo = seq_info), not(gives_warning("'strand' contains '\\*' as well as at least one of '\\+' or '-'.")))  
-  strand_wrong_length <- RleList(a = Rle('-', 200), b = Rle('-', 100), d = Rle('-', 100))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand_wrong_length, methylation_type = methylation_type, seqinfo = seq_info), throws_error("Length of each element in 'strand' must equal the number of rows of its corresponding element in 'pos'."))    
+test_that("CoMeth parameter checking works: 'counts'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘counts’ missing."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = as.list(m2_s3$counts), seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘counts’ must be a ‘DataFrameList’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts[1:2], seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Names of ‘counts’ must match those in ‘sample_names’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = endoapply(m2_s3$counts, function(x){cbind(x[, -3])}), seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘ncol\\(counts\\)’ must be identical for all elements of ‘counts’ and should be a power of 2."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = c(m2_s3$counts[1:2], DataFrameList(sample3 = m2_s3$counts[[3]][, -3])), seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘ncol\\(counts\\)’ must be identical for all elements of ‘counts’ and should be a power of 2."))  
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = endoapply(m2_s3$counts, function(x){DataFrame(lapply(x, as.numeric))}), seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Class of columns in each ‘DataFrame’ element of ‘counts’ must be: ‘integer’, ‘integer’, ‘integer’, ‘integer’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = endoapply(m2_s3$counts, function(x){colnames(x) <- rev(colnames(x)); x}), seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘m’ is set to 2 so colnames for all elements of ‘counts’ must be: ‘MM’, ‘MU’, ‘UM’, ‘UU’."))
+  rm(m2_s3)
+})
+
+test_that("CoMeth parameter checking works: 'seqnames'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘seqnames’ missing."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = as.list(m2_s3$seqnames), pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("‘seqnames’ must be an ‘RleList’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames[1:2], pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Names of ‘seqnames’ must match those in ‘sample_names’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = endoapply(m2_s3$seqnames, function(x){x[-1]}), pos = m2_s3$pos, seqinfo = m2_s3$seqinfo), throws_error("Length of each ‘Rle’ element of ‘seqnames’ must be identical to ‘nrow\\(pos\\)’"))
+  rm(m2_s3)
+})
+
+test_that("CoMeth parameter checking works: 'pos'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, seqinfo = m2_s3$seqinfo), throws_error("‘pos’ missing."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = as.list(m2_s3$pos), seqinfo = m2_s3$seqinfo), throws_error("‘pos’ must be a ‘DataFrameList’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos[1:2], seqinfo = m2_s3$seqinfo), throws_error("Names of ‘pos’ must match those in ‘sample_names’."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = endoapply(m2_s3$pos, function(x){x[-1, ]}), seqinfo = m2_s3$seqinfo), throws_error("‘nrow\\(counts\\)’ must be identical to ‘nrow\\(pos\\)’"))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = endoapply(m2_s3$pos, function(x){colnames(x) <- rev(colnames(x)); x}), seqinfo = m2_s3$seqinfo), throws_error("‘m’ is set to 2 so colnames for all elements of ‘pos’ must be: ‘pos1’, ‘pos2’."))
+  rm(m2_s3)
 })
 
 test_that("CoMeth parameter checking works: 'seqinfo'", {
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type), throws_error("'seqinfo' missing"))
-  
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos), throws_error("‘seqinfo’ missing."))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = as.data.frame(m2_s3$seqinfo)), throws_error("‘seqinfo’ must be a ‘Seqinfo’ object."))
+  rm(m2_s3)
 })
 
-test_that("CoMeth parameter checking works: 'sort_cometh'", {
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info, sort_cometh = TRUE), not(throws_error("'sort_cometh' must be TRUE or FALSE")))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info, sort_cometh = FALSE), not(throws_error("'sort_cometh' must be TRUE or FALSE")))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info, sort_cometh = 'TRUE'), throws_error("'sort_cometh' must be TRUE or FALSE"))
-  expect_that(CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seq_info, sort_cometh = 1), throws_error("'sort_cometh' must be TRUE or FALSE"))
+test_that("CoMeth parameter checking works: 'strand'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, strand = Rle()), throws_error("‘strand’ must be an ‘RleList’."))
+  strand <- RleList(sample1 = Rle(factor('*'), length(m2_s3$seqnames[[1]])), sample2 = Rle(factor('*'), length(m2_s3$seqnames[[2]])), sample3 = Rle(factor('*'), length(m2_s3$seqnames[[3]])))
+  strand <- endoapply(strand, function(x){levels(x) <- c('*', '+', '-', 'AAA'); x})
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, strand = strand), throws_error("invalid strand levels in 'x': AAA"))
+  strand <- RleList(sample1 = Rle(factor('*'), length(m2_s3$seqnames[[1]])), sample2 = Rle(factor('*'), length(m2_s3$seqnames[[2]])), sample3 = Rle(factor('*'), length(m2_s3$seqnames[[3]])))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, strand = endoapply(strand, function(x){x[-1]})), throws_error("Length of each ‘Rle’ element in ‘strand’ must equal the number of rows of its corresponding element in ‘pos’."))
+  strand <- RleList(sample1 = Rle(factor('*'), length(m2_s3$seqnames[[1]])), sample2 = Rle(factor('*'), length(m2_s3$seqnames[[2]])), sample3= Rle(factor('+'), length(m2_s3$seqnames[[1]])))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, strand = strand), gives_warning("The supplied ‘strand’ argument contains ‘\\*’ as well as at least one of ‘\\+’ or ‘\\-’."))
+  rm(m2_s3, strand)
 })
 
-#### Test CoMeth validity ####
+test_that("CoMeth parameter checking works: 'colData'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, colData = data.frame()), throws_error("‘colData’, if supplied, must be a ‘DataFrame’."))
+  colData <- DataFrame(a = c(1:3), row.names = paste0('sample', letters[1:3]))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, colData = colData), throws_error("‘row.names\\(colData\\)’ must be identical to ‘sample_names’."))
+  colData <- DataFrame(cancer = c(TRUE, TRUE, FALSE), row.names = paste0('sample', 1:3))
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, colData = colData), is_a("CoMeth"))
+  rm(m2_s3, colData)
+})
+
+test_that("CoMeth parameter checking works: 'exptData'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, exptData = list()), throws_error("‘exptData’, if supplied, must be a ‘SimpleList’."))
+  exptData <- SimpleList(assay_type = "methylC-seq")
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, exptData = exptData), is_a("CoMeth"))
+  rm(m2_s3, exptData)
+})
+
+test_that("CoMeth parameter checking works: '...'", {
+  m2_s1 <-  make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  cgi <- rep(TRUE, 10)
+  expect_that(CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo, cgi = cgi), is_a("CoMeth"))
+  expect_that(mcols(CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo, cgi = cgi)), is_identical_to(DataFrame(cgi = cgi)))
+  rm(m2_s1, cgi)
+})
+
+test_that("CoMeth parameter checking works: 'verbose'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  expect_that(CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo, verbose = TRUE), is_a("CoMeth"))
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Test CoMeth validity
+###
 context("CoMeth validity")
-## TODO: Add more tests of validity checking
 
-test_that("validObject returns TRUE on good input", {
-  expect_true(validObject(good_cometh))
+test_that("CoMeth validity checking works on good object", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(validObject(m2_s3), is_true())
+  rm(m2_s3)
 })
 
-test_that("validObject returns msg if 'counts' contains negative values", {
-  bad_cometh <- good_cometh
-  assay(bad_cometh, 'MMM') <- matrix(-1, ncol = ncol(good_cometh), nrow = nrow(good_cometh))
-  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'counts' has negative entries"))
+test_that("CoMeth validity checking works: '.valid.CoMeth.counts'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  assay(m2_s3, 'MM') <- matrix(-1, ncol = ncol(m2_s3), nrow = nrow(m2_s3))
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: ‘counts’ cannot have negative entries."))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  names(assays(m2_s3)) <- rev(names(assays(m2_s3)))
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: assay names must be: assay names must be: ‘MM’, ‘MU’, ‘UM’, ‘UU’"))
+  rm(m2_s3)
 })
 
-test_that("validObject returns msg if 'pos' contains negative values", {
-  bad_cometh <- good_cometh
-  values(rowData(bad_cometh)) <- DataFrame('pos2' = rep(-1, nrow(good_cometh)))
-  expect_that(validObject(bad_cometh), throws_error("invalid class “CoMeth” object: 'pos' has negative entries"))
+test_that("CoMeth validity checking works: '.valid.CoMeth.methylation_type'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  colData(m2_s3) <- colData(m2_s3)[, -1]
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: ‘colData’ of ‘CoMeth’ must contain column ‘methylation_type’ once and only once."))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  colData(m2_s3)$methylation_type <- rep('CpG', 3)
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: ‘methylation_type’ for each sample must be ‘CG’, ‘CHG’, ‘CHH’ or ‘CNN’, or some combination of these, e.g., ‘CG/CHG’.\nCombinations must sorted alphabetically and be separated by a forward slash \\(‘/’\\)."))
+  rm(m2_s3)
 })
 
-test_that("validObject returns msg if 'pos' are not sorted",{
-  #bad_cometh <- good_cometh
-  #assay(bad_cometh, 'pos2') <- matrix(1, ncol = 1, nrow = 100)
-  expect_true(FALSE)
-  #expect_that(validObject(bad_cometh), throws_error("Unsort_comethed row in 'pos'"))
+test_that("CoMeth validity checking works: '.valid.CoMeth.rowData'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  rowData(m2_s3) <- as(rowData(m2_s3), "GRanges")
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: ‘rowData\\(CoMeth\\)’ must be an ‘MTuples’ object."))
+  rm(m2_s3)
 })
 
-test_that("validObject returns msg if 'm' or 'methylation_type' incorrectly specified", {
-  bad_cometh <- good_cometh
-  colData(bad_cometh) <- colData(bad_cometh)[, 1, drop = FALSE]
-  expect_that(validObject(bad_cometh), throws_error("colData of 'CoMeth' must contain columns 'm' and 'methylation_type' once each, and once each only."))
-  bad_cometh <- good_cometh
-  colData(bad_cometh) <- DataFrame(m = rep(4L, 3), methylation_type = rep('CG', 3))
-  expect_that(validObject(bad_cometh), throws_error("1: length\\(assays\\) does not equal"))
+test_that("CoMeth validity checking works: '.valid.CoMeth.noDuplicates'", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  rowData(m2_s3)[2] <- rowData(m2_s3)[1]
+  expect_that(validObject(m2_s3), throws_error("invalid class “CoMeth” object: ‘CoMeth’ object cannot contain duplicate m-tuples."))
+  rm(m2_s3)
 })
 
-#### Functions that work on CoMeth objects ####
-context("Functions defined for CoMeth")
+context("CoMeth methods")
 
-test_that("getPos works",{
-  expect_true(FALSE) # Need to figure out how to test this for a non-trivial example
+test_that("'getPos' works", {
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  pos <- unlist(m2_s3$pos)
+  pos <- unique(pos)
+  row.names(pos) <- NULL
+  pos <- as.matrix(pos)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(getPos(m2_s3), is_identical_to(pos))
+  ## NOTE: The above test will fail if positions are not unique across samples
+  ## The below test, which is a bit convoluted, should work.
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3$pos[[2]] <- rbind(m2_s3$pos[[1]][4:10, ], m2_s3$pos[[2]][1:3, ])
+  pos <- cbind(as.vector(unlist(m2_s3$seqnames, use.names = FALSE)), as.matrix(unlist(m2_s3$pos)))
+  pos <- unique(pos)
+  row.names(pos) <- NULL
+  pos <- pos[, -1]
+  pos <- matrix(as.integer(pos), ncol = 2, dimnames = list(NULL, paste0('pos', 1:2)))
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(getPos(m2_s3)[order(getPos(m2_s3)[, 'pos1'], getPos(m2_s3)[, 'pos2']), ], is_identical_to(pos[order(pos[, 'pos1'], pos[, 'pos2']), ]))
 })
 
-test_that("getM works",{
-  expect_that(getM(good_cometh), is_identical_to(m))
+test_that("'getM' works", {
+  m1_s3 <- make_test_data(m = 1L, n = 10L, s = 3L, sim_counts = TRUE)
+  m1_s3 <- CoMeth(sample_names = m1_s3$sample_names, methylation_type = m1_s3$methylation_type, counts = m1_s3$counts, seqnames = m1_s3$seqnames, pos = m1_s3$pos, seqinfo = m1_s3$seqinfo)
+  expect_that(getM(m1_s3), is_identical_to(1L))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(getM(m2_s3), is_identical_to(2L))
+  m3_s3 <- make_test_data(m = 3L, n = 10L, s = 3L, sim_counts = TRUE)
+  m3_s3 <- CoMeth(sample_names = m3_s3$sample_names, methylation_type = m3_s3$methylation_type, counts = m3_s3$counts, seqnames = m3_s3$seqnames, pos = m3_s3$pos, seqinfo = m3_s3$seqinfo)
+  expect_that(getM(m3_s3), is_identical_to(3L))
+  m4_s3 <- make_test_data(m = 4L, n = 10L, s = 3L, sim_counts = TRUE)
+  m4_s3 <- CoMeth(sample_names = m4_s3$sample_names, methylation_type = m4_s3$methylation_type, counts = m4_s3$counts, seqnames = m4_s3$seqnames, pos = m4_s3$pos, seqinfo = m4_s3$seqinfo)
+  expect_that(getM(m4_s3), is_identical_to(4L))
+  rm(m1_s3, m2_s3, m3_s3, m4_s3)
 })
 
-#### CoMeth methods ####
-context("Test CoMeth methods")
-
-test_that("length", {
-  expect_that(length(good_cometh), equals(1294))
+test_that("'sampleNames' works", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  expect_that(sampleNames(m2_s1), is_identical_to(paste0('sample', 1)))
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  expect_that(sampleNames(m2_s2), is_identical_to(paste0('sample', 1:2)))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(sampleNames(m2_s3), is_identical_to(paste0('sample', 1:3)))
+  m2_s4 <- make_test_data(m = 2L, n = 10L, s = 4L, sim_counts = TRUE)
+  m2_s4 <- CoMeth(sample_names = m2_s4$sample_names, methylation_type = m2_s4$methylation_type, counts = m2_s4$counts, seqnames = m2_s4$seqnames, pos = m2_s4$pos, seqinfo = m2_s4$seqinfo)
+  expect_that(sampleNames(m2_s4), is_identical_to(paste0('sample', 1:4)))
+  rm(m2_s1, m2_s2, m2_s3, m2_s4)
 })
 
-test_that("sampleNames works", {
-  expect_that(sampleNames(good_cometh), is_identical_to(c('a', 'b', 'd')))
-  good_cometh_with_new_sample_names <- good_cometh
+test_that("'sampleNames<-' works", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  sampleNames(m2_s1) <- paste0('sample', letters[1])
+  expect_that(sampleNames(m2_s1), is_identical_to(paste0('sample', letters[1])))
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  sampleNames(m2_s2) <- paste0('sample', letters[1:2])
+  expect_that(sampleNames(m2_s2), is_identical_to(paste0('sample', letters[1:2])))
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  sampleNames(m2_s3) <- paste0('sample', letters[1:3])
+  expect_that(sampleNames(m2_s3), is_identical_to(paste0('sample', letters[1:3])))
+  m2_s4 <- make_test_data(m = 2L, n = 10L, s = 4L, sim_counts = TRUE)
+  m2_s4 <- CoMeth(sample_names = m2_s4$sample_names, methylation_type = m2_s4$methylation_type, counts = m2_s4$counts, seqnames = m2_s4$seqnames, pos = m2_s4$pos, seqinfo = m2_s4$seqinfo)
+  sampleNames(m2_s4) <- paste0('sample', letters[1:4])
+  expect_that(sampleNames(m2_s4), is_identical_to(paste0('sample', letters[1:4])))
+  rm(m2_s1, m2_s2, m2_s3, m2_s4)
 })
 
-test_that("sampleNames<- works", {
-  sampleNames(good_cometh_with_new_sample_names) <- c('s1', 's2', 's3')
-  expect_that(validObject(good_cometh_with_new_sample_names), is_true())
-  expect_that(sampleNames(good_cometh_with_new_sample_names), equals(c('s1', 's2', 's3')))
+test_that("'length' works", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  expect_that(length(m2_s1), is_identical_to(1L))
+  rm(m2_s1)
 })
 
-test_that("granges works", {
-  expect_that(granges(good_cometh), is_a("GRanges"))
+test_that("'nrow' works", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  expect_that(nrow(m2_s1), is_identical_to(10L))
+  rm(m2_s1)
 })
 
-test_that("ncol/NCOL works", {
-  expect_that(ncol(good_cometh), equals(m))
-  expect_that(NCOL(good_cometh), equals(m))
+test_that("'ncol' works", {
+  m2_s1 <- make_test_data(m = 2L, n = 10L, s = 1L, sim_counts = TRUE)
+  m2_s1 <- CoMeth(sample_names = m2_s1$sample_names, methylation_type = m2_s1$methylation_type, counts = m2_s1$counts, seqnames = m2_s1$seqnames, pos = m2_s1$pos, seqinfo = m2_s1$seqinfo)
+  expect_that(ncol(m2_s1), is_identical_to(1L))
+  rm(m2_s1)
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  expect_that(ncol(m2_s2), is_identical_to(2L))
+  rm(m2_s2)
+  m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
+  m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
+  expect_that(ncol(m2_s3), is_identical_to(3L))
+  rm(m2_s3)
+  m2_s4 <- make_test_data(m = 2L, n = 10L, s = 4L, sim_counts = TRUE)
+  m2_s4 <- CoMeth(sample_names = m2_s4$sample_names, methylation_type = m2_s4$methylation_type, counts = m2_s4$counts, seqnames = m2_s4$seqnames, pos = m2_s4$pos, seqinfo = m2_s4$seqinfo)
+  expect_that(ncol(m2_s4), is_identical_to(4L))
+  rm(m2_s4)
 })
 
-test_that("nrow/NROW works", {
-  expect_that(nrow(good_cometh), equals(1294))
-  expect_that(nrow(good_cometh), equals(1294))
+test_that("'granges' is just an alias of 'rowData'", {
+  ## granges(CoMeth) doesn't really make sense because the rowData is MTuples rather than GRanges.
+  ## As of GenomicRanges_1.14.4, granges(SummarizedExperiment) is simply an alias of rowData(SummarizedExperiment), hence, by inheritance, granges(CoMeth) is just an alias of rowData(CoMeth).
+  ## This test is in case this behaviour changes in future versions of GenomicRanges.
+  m5_s4 <- make_test_data(m = 5L, n = 10L, s = 4L, sim_counts = TRUE)
+  m5_s4 <- CoMeth(sample_names = m5_s4$sample_names, methylation_type = m5_s4$methylation_type, counts = m5_s4$counts, seqnames = m5_s4$seqnames, pos = m5_s4$pos, seqinfo = m5_s4$seqinfo)
+  expect_that(granges(m5_s4), is_identical_to(rowData(m5_s4)))
+  rm(m5_s4)
 })
 
-test_that("colData works", {
-  expect_that(colData(good_cometh), is_identical_to(DataFrame(m = rep(3L, 3), methylation_type = rep('CG', 3), row.names = c('a', 'b', 'd'))))
+test_that("'cbind' works", {
+  m1_s2 <- make_test_data(m = 1L, n = 10L, s = 2L, sim_counts = TRUE)
+  m1_s2 <- CoMeth(sample_names = m1_s2$sample_names, methylation_type = m1_s2$methylation_type, counts = m1_s2$counts, seqnames = m1_s2$seqnames, pos = m1_s2$pos, seqinfo = m1_s2$seqinfo)
+  expect_that(cbind(m1_s2[, 1], m1_s2[, 2]), is_equivalent_to(m1_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(cbind(m1_s2, m1_s2), throws_error("Cannot ‘cbind’ ‘CoMeth’ objects with duplicate ‘sample_names’."))
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  expect_that(cbind(m2_s2[, 1], m2_s2[, 2]), is_equivalent_to(m2_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(cbind(m2_s2, m2_s2), throws_error("Cannot ‘cbind’ ‘CoMeth’ objects with duplicate ‘sample_names’."))
+  m3_s2 <- make_test_data(m = 3L, n = 10L, s = 2L, sim_counts = TRUE)
+  m3_s2 <- CoMeth(sample_names = m3_s2$sample_names, methylation_type = m3_s2$methylation_type, counts = m3_s2$counts, seqnames = m3_s2$seqnames, pos = m3_s2$pos, seqinfo = m3_s2$seqinfo)
+  expect_that(cbind(m3_s2[, 1], m3_s2[, 2]), is_equivalent_to(m3_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(cbind(m3_s2, m3_s2), throws_error("Cannot ‘cbind’ ‘CoMeth’ objects with duplicate ‘sample_names’."))
+  m4_s2 <- make_test_data(m = 4L, n = 10L, s = 2L, sim_counts = TRUE)
+  m4_s2 <- CoMeth(sample_names = m4_s2$sample_names, methylation_type = m4_s2$methylation_type, counts = m4_s2$counts, seqnames = m4_s2$seqnames, pos = m4_s2$pos, seqinfo = m4_s2$seqinfo)
+  expect_that(cbind(m4_s2[, 1], m4_s2[, 2]), is_equivalent_to(m4_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(cbind(m4_s2, m4_s2), throws_error("Cannot ‘cbind’ ‘CoMeth’ objects with duplicate ‘sample_names’."))
+  expect_that(cbind(m2_s2[, 1], m4_s2[, 2]), throws_error("Cannot ‘cbind’ ‘CoMeth’ objects with the different sized m-tuples, that is, different ‘m’."))
+  rm(m1_s2, m2_s2, m3_s2, m4_s2)
 })
 
-test_that("colData<- works", {
-  good_cometh_new_colData <- good_cometh
-  colData(good_cometh_new_colData) <- DataFrame(m = rep(3L, 3), methylation_type = rep('CG/CHG', 3), row.names = c('a1', 'b1', 'd1'))
-  expect_that(validObject(good_cometh_new_colData), is_true())
+test_that("'rbind' works", {
+  m1_s2 <- make_test_data(m = 1L, n = 10L, s = 2L, sim_counts = TRUE)
+  m1_s2 <- CoMeth(sample_names = m1_s2$sample_names, methylation_type = m1_s2$methylation_type, counts = m1_s2$counts, seqnames = m1_s2$seqnames, pos = m1_s2$pos, seqinfo = m1_s2$seqinfo)
+  expect_that(rbind(m1_s2[seq.int(from = 1, to = floor(nrow(m1_s2) / 2), by = 1), ], m1_s2[seq.int(from = floor(nrow(m1_s2) / 2) + 1, to = nrow(m1_s2), by = 1), ]), is_equivalent_to(m1_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(rbind(m1_s2, m1_s2), throws_error("Cannot ‘rbind’ ‘CoMeth’ object with any identical m-tuples."))
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  expect_that(rbind(m2_s2[seq.int(from = 1, to = floor(nrow(m2_s2) / 2), by = 1), ], m2_s2[seq.int(from = floor(nrow(m2_s2) / 2) + 1, to = nrow(m2_s2), by = 1), ]), is_equivalent_to(m2_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).  expect_that(rbind(m2_s2, m2_s2), throws_error("Cannot ‘rbind’ ‘CoMeth’ object with any identical m-tuples."))
+  m3_s2 <- make_test_data(m = 3L, n = 10L, s = 2L, sim_counts = TRUE)
+  m3_s2 <- CoMeth(sample_names = m3_s2$sample_names, methylation_type = m3_s2$methylation_type, counts = m3_s2$counts, seqnames = m3_s2$seqnames, pos = m3_s2$pos, seqinfo = m3_s2$seqinfo)
+  expect_that(rbind(m3_s2[seq.int(from = 1, to = floor(nrow(m3_s2) / 2), by = 1), ], m3_s2[seq.int(from = floor(nrow(m3_s2) / 2) + 1, to = nrow(m3_s2), by = 1), ]), is_equivalent_to(m3_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).  expect_that(rbind(m3_s2, m3_s2), throws_error("Cannot ‘rbind’ ‘CoMeth’ object with any identical m-tuples."))
+  m4_s2 <- make_test_data(m = 4L, n = 10L, s = 2L, sim_counts = TRUE)
+  m4_s2 <- CoMeth(sample_names = m4_s2$sample_names, methylation_type = m4_s2$methylation_type, counts = m4_s2$counts, seqnames = m4_s2$seqnames, pos = m4_s2$pos, seqinfo = m4_s2$seqinfo)
+  expect_that(rbind(m4_s2[seq.int(from = 1, to = floor(nrow(m4_s2) / 2), by = 1), ], m4_s2[seq.int(from = floor(nrow(m4_s2) / 2) + 1, to = nrow(m4_s2), by = 1), ]), is_equivalent_to(m4_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(rbind(m4_s2, m4_s2), throws_error("Cannot ‘rbind’ ‘CoMeth’ object with any identical m-tuples."))
+  rm(m1_s2, m2_s2, m3_s2, m4_s2)
 })
 
-test_that("cbind works", {
-  cbind_cometh <- cbind(a_cometh, b_cometh, d_cometh)
-  ## Can't just check objects are identical but can check they are equal and that all slots are identical
-  expect_that(cbind_cometh, equals(good_cometh))
-  expect_that(rowData(cbind_cometh), is_identical_to(rowData(good_cometh)))
-  expect_that(colData(cbind_cometh), is_identical_to(colData(good_cometh)))
-  expect_that(exptData(cbind_cometh), is_identical_to(exptData(good_cometh)))
-  expect_that(assays(cbind_cometh), is_identical_to(assays(good_cometh)))  
-  ## Cases where cbind should break
-  b_cometh_bad_seqinfo <- b_cometh
-  genome(b_cometh_bad_seqinfo) <- c(rep('mm10', 3))
-  expect_that(cbind(a_cometh, b_cometh_bad_seqinfo), throws_error("Can only cbind 'CoMeth' objects with identical 'seqinfo'."))
-  expect_that(cbind(good_cometh, good_cometh), throws_error("Cannot cbind 'CoMeth' objects containing duplicate 'sample_names'"))  
-  expect_that(cbind(a_cometh, m1_cometh), throws_error("Cannot cbind 'CoMeth' objects with the different 'm'."))
-  a_cometh_CHG <- a_cometh
-  colData(a_cometh_CHG)$methylation_type <- 'CHG'
-  expect_that(cbind(a_cometh_CHG, b_cometh), gives_warning("Combining 'CoMeth' objects with different 'methylation_type'."))
+test_that("'combine' works", {
+  m1_s2 <- make_test_data(m = 1L, n = 10L, s = 2L, sim_counts = TRUE)
+  m1_s2 <- CoMeth(sample_names = m1_s2$sample_names, methylation_type = m1_s2$methylation_type, counts = m1_s2$counts, seqnames = m1_s2$seqnames, pos = m1_s2$pos, seqinfo = m1_s2$seqinfo)
+  expect_that(combine(m1_s2[seq.int(from = 1, to = floor(nrow(m1_s2) / 2), by = 1), ], m1_s2[seq.int(from = floor(nrow(m1_s2) / 2) + 1, to = nrow(m1_s2), by = 1), ]), is_equivalent_to(m1_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(combine(m1_s2[seq.int(from = 1, to = floor(nrow(m1_s2) / 2), by = 1), ], m1_s2[seq.int(from = floor(nrow(m1_s2) / 2) + 1, to = nrow(m1_s2), by = 1), ]), is_equivalent_to(m1_s2))
+  expect_that(combine(m1_s2, m1_s2), throws_error("‘combine’ failed when trying to ‘rbind’ the intermediate ‘CoMeth’ objects."))
+  m2_s2 <- make_test_data(m = 2L, n = 10L, s = 2L, sim_counts = TRUE)
+  m2_s2 <- CoMeth(sample_names = m2_s2$sample_names, methylation_type = m2_s2$methylation_type, counts = m2_s2$counts, seqnames = m2_s2$seqnames, pos = m2_s2$pos, seqinfo = m2_s2$seqinfo)
+  expect_that(combine(m2_s2[seq.int(from = 1, to = floor(nrow(m2_s2) / 2), by = 1), ], m2_s2[seq.int(from = floor(nrow(m2_s2) / 2) + 1, to = nrow(m2_s2), by = 1), ]), is_equivalent_to(m2_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(combine(m2_s2[seq.int(from = 1, to = floor(nrow(m2_s2) / 2), by = 1), ], m2_s2[seq.int(from = floor(nrow(m2_s2) / 2) + 1, to = nrow(m2_s2), by = 1), ]), is_equivalent_to(m2_s2))
+  expect_that(combine(m2_s2, m2_s2), throws_error("‘combine’ failed when trying to ‘rbind’ the intermediate ‘CoMeth’ objects."))
+  m3_s2 <- make_test_data(m = 3L, n = 10L, s = 2L, sim_counts = TRUE)
+  m3_s2 <- CoMeth(sample_names = m3_s2$sample_names, methylation_type = m3_s2$methylation_type, counts = m3_s2$counts, seqnames = m3_s2$seqnames, pos = m3_s2$pos, seqinfo = m3_s2$seqinfo)
+  expect_that(combine(m3_s2[seq.int(from = 1, to = floor(nrow(m3_s2) / 2), by = 1), ], m3_s2[seq.int(from = floor(nrow(m3_s2) / 2) + 1, to = nrow(m3_s2), by = 1), ]), is_equivalent_to(m3_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(combine(m3_s2[seq.int(from = 1, to = floor(nrow(m3_s2) / 2), by = 1), ], m3_s2[seq.int(from = floor(nrow(m3_s2) / 2) + 1, to = nrow(m3_s2), by = 1), ]), is_equivalent_to(m3_s2))
+  expect_that(combine(m3_s2, m3_s2), throws_error("‘combine’ failed when trying to ‘rbind’ the intermediate ‘CoMeth’ objects."))
+  m4_s2 <- make_test_data(m = 4L, n = 10L, s = 2L, sim_counts = TRUE)
+  m4_s2 <- CoMeth(sample_names = m4_s2$sample_names, methylation_type = m4_s2$methylation_type, counts = m4_s2$counts, seqnames = m4_s2$seqnames, pos = m4_s2$pos, seqinfo = m4_s2$seqinfo)
+  expect_that(combine(m4_s2[seq.int(from = 1, to = floor(nrow(m4_s2) / 2), by = 1), ], m4_s2[seq.int(from = floor(nrow(m4_s2) / 2) + 1, to = nrow(m4_s2), by = 1), ]), is_equivalent_to(m4_s2)) # Can't use is_identical_to because the assays are stored as a ReferenceClass (at least, I think this is the reason).
+  expect_that(combine(m4_s2[seq.int(from = 1, to = floor(nrow(m4_s2) / 2), by = 1), ], m4_s2[seq.int(from = floor(nrow(m4_s2) / 2) + 1, to = nrow(m4_s2), by = 1), ]), is_equivalent_to(m4_s2))
+  expect_that(combine(m4_s2, m4_s2), throws_error("‘combine’ failed when trying to ‘rbind’ the intermediate ‘CoMeth’ objects."))
+  rm(m1_s2, m2_s2, m3_s2, m4_s2)
 })
 
-test_that("rbind works", {
-  ## Can't just check objects are identical but can check they are equal and that all slots are identical
-  rbind_cometh <- rbind(a1_cometh, a2_cometh)
-  expect_that(rbind_cometh, equals(a_cometh))
-  expect_that(rowData(rbind_cometh), is_identical_to(rowData(a_cometh)))
-  expect_that(colData(rbind_cometh), is_identical_to(colData(a_cometh)))
-  expect_that(exptData(rbind_cometh), is_identical_to(exptData(a_cometh)))
-  expect_that(assays(rbind_cometh), is_identical_to(assays(a_cometh)))
-  ## Cases where bbind should break
-  a2_cometh_bad_seqinfo <- a2_cometh
-  genome(a2_cometh_bad_seqinfo) <- rep('mm10', 3)
-  expect_that(rbind(a1_cometh, a2_cometh_bad_seqinfo), throws_error("Can only rbind 'CoMeth' objects with identical 'seqinfo'"))
-  a2_cometh_rename <- a2_cometh
-  sampleNames(a2_cometh_rename) <- 'b'
-  expect_that(rbind(a1_cometh, a2_cometh_rename), throws_error("Cannot rbind CoMeth objects with different sampleNames"))
-  a_cometh_rename <- a_cometh
-  sampleNames(a_cometh_rename) <- 'm1'
-  expect_that(rbind(m1_cometh, a_cometh_rename), throws_error("Cannot rbind 'CoMeth' objects with the different 'm'."))
-  a2_cometh_CHG <- a2_cometh
-  colData(a2_cometh_CHG)$methylation_type <- 'CHG'
-  expect_that(rbind(a1_cometh, a2_cometh_CHG), gives_warning("Combining 'CoMeth' objects with different 'methylation_type'."))
+test_that("'getCoverage' works", {
+  m1_s1 <- make_test_data(m = 1L, n = 10L, s = 1L, sim_counts = TRUE)
+  m1_s1 <- CoMeth(sample_names = m1_s1$sample_names, methylation_type = m1_s1$methylation_type, counts = m1_s1$counts, seqnames = m1_s1$seqnames, pos = m1_s1$pos, seqinfo = m1_s1$seqinfo)
+  expect_that(getCoverage(m1_s1), is_identical_to(matrix(assay(m1_s1, 'M') + assay(m1_s1, 'U'), ncol = 1, dimnames = list(NULL, 'sample1'))))
+  m1_s2 <- make_test_data(m = 1L, n = 10L, s = 2L, sim_counts = TRUE)
+  m1_s2 <- CoMeth(sample_names = m1_s2$sample_names, methylation_type = m1_s2$methylation_type, counts = m1_s2$counts, seqnames = m1_s2$seqnames, pos = m1_s2$pos, seqinfo = m1_s2$seqinfo)
+  expect_that(getCoverage(m1_s2), is_identical_to(matrix(assay(m1_s2, 'M') + assay(m1_s2, 'U'), ncol = 2, dimnames = list(NULL, c('sample1', 'sample2')))))
+  m1_s3 <- make_test_data(m = 1L, n = 10L, s = 3L, sim_counts = TRUE)
+  m1_s3 <- CoMeth(sample_names = m1_s3$sample_names, methylation_type = m1_s3$methylation_type, counts = m1_s3$counts, seqnames = m1_s3$seqnames, pos = m1_s3$pos, seqinfo = m1_s3$seqinfo)
+  expect_that(getCoverage(m1_s3), is_identical_to(matrix(assay(m1_s3, 'M') + assay(m1_s3, 'U'), ncol = 3, dimnames = list(NULL, c('sample1', 'sample2', 'sample3')))))
+  m1_s4 <- make_test_data(m = 1L, n = 10L, s = 4L, sim_counts = TRUE)
+  m1_s4 <- CoMeth(sample_names = m1_s4$sample_names, methylation_type = m1_s4$methylation_type, counts = m1_s4$counts, seqnames = m1_s4$seqnames, pos = m1_s4$pos, seqinfo = m1_s4$seqinfo)
+  expect_that(getCoverage(m1_s4), is_identical_to(matrix(assay(m1_s4, 'M') + assay(m1_s4, 'U'), ncol = 4, dimnames = list(NULL, c('sample1', 'sample2', 'sample3', 'sample4')))))
+  rm(m1_s1, m1_s2, m1_s3, m1_s4)
 })
 
-test_that("compare works", {
-  expect_that(zero_range(compare(good_cometh, good_cometh)), is_true())
-  expect_that(compare(m1_cometh, rev(m1_cometh)), is_identical_to(compare(rowData(m1_cometh), rev(rowData(m1_cometh)))))
-  expect_that(compare(good_cometh, m1_cometh), throws_error("Cannot compare CoMeth object with different 'm'"))
-  good_cometh_diff_seqinfo <- good_cometh
-  genome(good_cometh_diff_seqinfo) <- 'mm10'
-  expect_that(compare(good_cometh, good_cometh_diff_seqinfo), throws_error())
-  ## Test ==, <=, !=, >=, <, >
-  ## Test with 3-tuples
-  expect_that(compare(good_cometh, good_cometh) == 0, is_identical_to(good_cometh == good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) == 0, is_identical_to(good_cometh == rev(good_cometh)))
-  expect_that(compare(good_cometh, good_cometh) <= 0, is_identical_to(good_cometh <= good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) <= 0, is_identical_to(good_cometh <= rev(good_cometh)))
-  expect_that(compare(good_cometh, good_cometh) != 0, is_identical_to(good_cometh != good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) != 0, is_identical_to(good_cometh != rev(good_cometh)))
-  expect_that(compare(good_cometh, good_cometh) >= 0, is_identical_to(good_cometh >= good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) >= 0, is_identical_to(good_cometh >= rev(good_cometh)))
-  expect_that(compare(good_cometh, good_cometh) < 0, is_identical_to(good_cometh < good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) < 0, is_identical_to(good_cometh < rev(good_cometh)))
-  expect_that(compare(good_cometh, good_cometh) > 0, is_identical_to(good_cometh > good_cometh))
-  expect_that(compare(good_cometh, rev(good_cometh)) > 0, is_identical_to(good_cometh > rev(good_cometh)))
-  ## Test with 1-tuples
-  expect_that(compare(m1_cometh, m1_cometh) == 0, is_identical_to(m1_cometh == m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) == 0, is_identical_to(m1_cometh == rev(m1_cometh)))
-  expect_that(compare(m1_cometh, m1_cometh) <= 0, is_identical_to(m1_cometh <= m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) <= 0, is_identical_to(m1_cometh <= rev(m1_cometh)))
-  expect_that(compare(m1_cometh, m1_cometh) != 0, is_identical_to(m1_cometh != m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) != 0, is_identical_to(m1_cometh != rev(m1_cometh)))
-  expect_that(compare(m1_cometh, m1_cometh) >= 0, is_identical_to(m1_cometh >= m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) >= 0, is_identical_to(m1_cometh >= rev(m1_cometh)))
-  expect_that(compare(m1_cometh, m1_cometh) < 0, is_identical_to(m1_cometh < m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) < 0, is_identical_to(m1_cometh < rev(m1_cometh)))
-  expect_that(compare(m1_cometh, m1_cometh) > 0, is_identical_to(m1_cometh > m1_cometh))
-  expect_that(compare(m1_cometh, rev(m1_cometh)) > 0, is_identical_to(m1_cometh > rev(m1_cometh)))
+## TODO: Test that duplicated works when m > = 3
+test_that("'duplicated' works", {
+  m4_s2 <- make_test_data(m = 4L, n = 10L, s = 2L, sim_counts = TRUE)
+  m4_s2 <- CoMeth(sample_names = m4_s2$sample_names, methylation_type = m4_s2$methylation_type, counts = m4_s2$counts, seqnames = m4_s2$seqnames, pos = m4_s2$pos, seqinfo = m4_s2$seqinfo)
+  start(m4_s2) <- 1
+  end(m4_s2) <- 10
+  m4_s2@rowData@extraPos <- matrix(c(rep(3, nrow(m4_s2)), rep(7, nrow(m4_s2))), ncol = 2)
+  expect_that(any(duplicated(m4_s2)), is_true())
 })
-
-test_that("dim works", {
-  expect_that(dim(good_cometh), is_identical_to(c(nrow(good_cometh), ncol(good_cometh))))
-})
-
-test_that("dimnames works", {
-  expect_that(dimnames(good_cometh), is_identical_to(list(names(rowData(good_cometh)), rownames(colData(x)))))
-})
-
-test_that("end works", {
-  expect_that(end(good_cometh), is_identical_to(end(rowData(good_cometh))))
-})
-
-test_that("duplicated works", {
-  expect_that(any(duplicated(good_cometh)), is_false())
-  expect_that(duplicated(good_cometh), not(is_identical_to(duplicated(rowData(good_cometh)))))
-})
-
-test_that("mcols works", {
-  expect_that(mcols(good_cometh), is_identical_to(DataFrame(pos2 = getPos(good_cometh)[, 3])))
-})
-
-test_that("mcols<- works", {
-  ## TODO: Write test
-  expect_that(FALSE, is_true())
-})
-
-
-
-#### OLD CODE BELOW THIS LINE ####
-
-
-test_that("getCoverage works",{
-  expect_true(FALSE) # Need to figure out how to test this for a non-trivial example
-  #expect_that(getCoverage(tsv_cometh), is_identical_to(rowSums(tsv$counts)))
-})
-

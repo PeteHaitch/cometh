@@ -1,0 +1,205 @@
+---
+title: "Defining comparison-type methods for the `MTuples` class"
+author: Peter Hickey
+date: 6 May 2014
+output:
+  html_document:
+    toc: yes
+---
+
+# Aim
+
+I need to define the set set of comparison-type methods for the `MTuples` class.
+
+# Background notes
+
+## `?compare`
+
+Based on the documentation in `?compare` I need to define the following methods (although now all need to be explicitly defined due to the magic of inheritance):
+
+* Element-wise (aka "parallel") comparison of 2 `MTuples` objects
+    + `compare`
+    + `==`
+    + `<=`
+    + `!=`
+    + `>=`
+    + `<`
+    + `>`
+* `selfmatch`
+    + `selfmatch`
+* `duplicated` and `unique`
+    + `duplicated`
+    + `unique`
+* `%in%`
+    + `%in%`
+* `findMatches` and `countMatches`
+    + `findMatches`
+    + `countMatches`
+* `sort`
+    + `sort`
+* `table`
+    + `table`
+
+Based on my reading of the`?compare` documenation:
+
+* Simply implementing the `compare` method should ensure that the `==`, `<=`, `!=`, `>=`, `<` and `>` operators "work out-of-the-box".
+* Alternatively, "if `compare` is not implemented, then it's enough to implement `==` and `<=` methods to have the remaining operators (`!=`, `>=`, `<`, and `>`) work out-of-the-box" __but only if there is not a separately defined method for `GRanges` objects because `MTuples` objects first inherit from `GRanges` before `Vector`.__
+* Correctly implementing `match` will give me `selfMatch` "out-of-the-box", which in turn will give me `duplicated`, `unique`, `%in%`, `findMatches` and `countMatches` "out-of-the-box" __but only if there is not a separately defined method for `GRanges` objects because `MTuples` objects first inherit from `GRanges` before `Vector`.__
+* Correctly implementing `order` will ensure `sort` works "out-of-the-box".
+* Correctly implementing `selfmatch`, `order` and `as.character` ensures that `table` works "out-of-the-box" __but only if there is not a separately defined method for `GRanges` objects because `MTuples` objects first inherit from `GRanges` before `Vector`.__
+
+## `?"Ranges-comparison"`
+
+Further documentation in `?"Ranges-comparison"` says I should also implement `order` and `rank` methods. There is also a (somewhat complicated) set of predefined codes for `Ranges` comparison.
+
+__It's not immediately clear whether the `compare` method for `MTuples` should also return something more complicated than a simple `<0`, `==0` or `>-` value.__ For example, `?"Ranges-comparison"` notes that:
+
+> [while] the `compare` method for `Ranges` objects is guaranteed to return predefined codes only but methods for other objects (e.g. for `GenomicRanges` objects) can return non-predefined codes. 
+
+## Implications for `findOverlaps`-based methods
+
+Currently, I've defined a specialised method for `findOverlaps` when `m > 2` and `type = equal`. There might be a better way to do this using the `compare` or `findMatches` methods, if these are correctly defined. __No, the argument becomes circular since `findMatch` relies on `matches` which relies on `findOverlaps`.__
+
+# Methods definitions
+
+## The logic
+
+The following is adapted from notes for the `compare` method defined for `GenomicRanges` class ([https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/GenomicRanges/R/GenomicRanges-comparison.R](https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/GenomicRanges/R/GenomicRanges-comparison.R))
+
+### 0. ONLY `MTuples` OBJECTS WITH THE SAME `m` CAN BE MEANINGFULLY COMPARED
+For example, there is no meaningful way to compare a 1-tuple to a 5-tuple.
+
+### I. UNIQUE AND DUPLICATED ELEMENTS WITHIN A `MTuples` OBJECT
+Two elements of an `MTuples` object (i.e. two m-tuples) are considered equal iff they are on the same underlying `sequence` and `strand` (including identical `seqinfo`), and have the same `pos` (`pos1, pos2, ..., posm`).
+
+### II. ORDERING THE ELEMENTS OF AN `MTuples` OBJECT
+The "natural order" for the elements of an `MTuples` object is to order them (a) first by sequence level, (b) then by strand, (c1) then by `pos1`, (ci, `i = 2, ..., m - 1`) then by `posi`, (cm) then by `posm`. This differs to the natural order of `GenomicRanges`, which, using this notation, have steps (c1), ..., (cm) replaced by (c) `pos1` and (d) `posm`.
+
+### III. ELEMENT-WISE (AKA "PARALLEL") COMPARISON OF 2 `MTuples` OBJECTS
+We want the `==`, `!=`, `<=`, `>=`, `<` and `>` operators between 2 `MTuples` objects to be compatible with the "natural order" defined previously. Defining those operators when the 2 objects have *identical* `seqlevels()` is straightforward but we can in fact extend this comparison to the following situation:
+
+1. `e1` and `e2` have compatible sets of underlying sequences, that is, `seqinfo(e1)` and `seqinfo(e2)` can be merged.
+2.  `seqlevels(e1)` and `seqlevels(e2)` are in the same order. Note that (A) guarantees that the `seqlevels` of one is a subset of the `seqlevels` of the other. (B) is saying that this subset should be a subsequence.
+
+Pre-comparison step: if (A) and (B) are satisfied, then the 2 `seqinfo()` are merged and the `seqlevels()` of the result is assigned back to each object to compare. This is a way to have 2 objects with identical `seqlevels()` before the comparison can actually be performed and meaningful. The reason (B) is required for the pre-comparison step is because we want this step to preserve the original order of the `seqlevels()` in *both* objects. Without this precaution, the expected anti-symetric property of some operators would not be satisfied e.g. `any(e1 < e2 & e2 < e1)` could be `TRUE`.
+
+## `compare`
+
+From `?compare`:
+
+> Doing `compare(x, y)` on 2 vector-like objects `x` and `y` of length 1 must return an integer less than, equal to, or greater than zero if the single element in `x` is considered to be respectively less than, equal to, or greater than the single element in `y`. If `x` or `y` have a length != 1, then they are typically expected to have the same length so `compare(x, y)` can operate element-wise, that is, in that case it returns an integer vector of the same length as `x` and `y` where the i-th element is the result of compairing `x[i]` and `y[i]`. If `x` and `y` don't have the same length and are not zero-length vectors, then the shortest is first recycled to the length of the longest. If one of them is a zero-length vector then `compare(x, y)` returns a zero-length integer vector.
+
+I do not yet have a set of predefined codes to assign m-tuples on the same space (i.e. on the same underlying sequenc and strand). In fact, I'm not even sure whether this is possible given the multitude of ways that two m-tuples can overlap, particularly with large `m`. Instead, I will keep things simple and just return a value less than zero (`x < y`), equal to zero (`x == y`) or greater than zero (`x > y`).
+
+```{r, eval = FALSE}
+## This is adapted from .GenomicRanges.compare.
+.MTuples.compare <- function(x, y){
+  
+  if (length(x) != length(y)){
+    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), " objects when ", sQuote('length(x)'), " != ", sQuote('length(y)'))
+  }
+  
+  ## Check 'm' is identical
+  if (getM(x) != getM(y)){
+    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), " objects with different ", sQuote('m'))
+  }
+    
+  ## Pre-comparison step (see above for details).
+  ## merge() will fail if 'x' and 'y' don't have compatible underlying
+  ## sequences.
+  seqinfo <- merge(seqinfo(x), seqinfo(y))
+  seqlevels <- seqlevels(seqinfo)
+  if (any(diff(match(seqlevels(y), seqlevels)) < 0L)){
+    stop("the 2 objects to compare have ", sQuote('seqlevels'), " in incompatible orders.") # Error message differs slightly from that provided by .GenomicRanges.compare
+  }
+  ## This should only insert new seqlevels in the existing ones i.e. it
+  ## should NEVER drop or reorder existing levels
+  seqlevels(x) <- seqlevels(y) <- seqlevels
+    
+  ## This is where .MTuples.compare really differs from .GenomicRanges.compare
+  a <- as.integer(seqnames(x)) - as.integer(seqnames(y))
+  b <- as.integer(strand(x)) - as.integer(strand(y))
+  c <- getPos(x) - getPos(y)
+
+  ## Loop over cbind(a, b, c) by row and report the first non-zero element or the final element.
+  ## Do this without actually forming cbind(a, b, c).
+  ## Rcpp solution is > 1000x faster than equivalent R solution when length(x) = 2,000,000
+  val <- MTuplesCompareCpp(a, b, c)
+  
+  return(val)
+}
+```
+
+```{r, eval = FALSE}
+setMethod("compare", c("MTuples", "MTuples"), function(x, y){
+  .MTuples.compare(x, y)
+})
+```
+
+## Element wise (aka "parallel") comparison of 2 `MTuples` objects
+
+We only need to implement `==` and `<=` methods. The other comparison binary operators (`!=`, `>=`, `<`, `>`) will then work out-of-the-box on `MTuples` objects thanks to the methods for `Vector` objects.
+
+
+```{r, eval = FALSE}
+setMethod("==", signature(e1 = "MTuples", e2 = "MTuples"),
+    function(e1, e2) { .MTuples.compare(e1, e2) == 0L }
+)
+
+setMethod("<=", signature(e1="GenomicRanges", e2="GenomicRanges"),
+    function(e1, e2) { .MTuples.compare(e1, e2) <= 0L }
+)
+```
+
+## `duplicated`
+
+The current R-based `duplicated` method is very slow, taking roughly $44$ seconds when `length(x)` = $2, 000, 000$ and `m` = 3. Running `duplicated` on a `GRanges` object with $2,000,000$ elements takes only $0.3$ seconds, thanks to a C-level implementation.
+
+`unique()` will work out-of-the-box on a `MTuples` object thanks to the method for `Vector` objects.
+
+## `match`
+
+`%in%` will work out-of-the-box on `MTuples` objects thanks to the method for `Vector` objects.
+
+```{r, eval = FALSE}
+## Loosely based on match method for GenomicRanges objects
+setMethod("match", c("MTuples", "MTuples"), function(x, table, nomatch = NA_integer_, incomparables = NULL, ignore.strand = FALSE){
+  if (!isSingleNumberOrNA(nomatch)){
+    stop(sQuote('nomatch'), " must be a single number or ", sQuote('NA'))
+  }
+  if (!is.integer(nomatch)){
+    nomatch <- as.integer(nomatch)
+  }
+  if (!is.null(incomparables)){
+    stop(sQuote('match'), " method for ", sQuote('MTuples'), " objects only accepts ", sQuote('incomparables = NULL'))
+  }
+  if (!isTRUEorFALSE(ignore.strand)){
+    stop(sQuote('ignore.strand'), " must be ", sQuote('TRUE'), " or ", sQuote('FALSE'))
+  }
+  ## Calling merge() is the way to check that 'x' and 'table' are based on the same reference genome.
+  merge(seqinfo(x), seqinfo(table))
+
+  findOverlaps(x, table, type = "equal", select = "first")
+  }
+)
+
+
+```
+
+
+```{r, eval = FALSE, echo = FALSE}
+## Some test data
+x <- make_test_data(m = 4L, n = 200000, sim_counts = FALSE)
+x <- MTuples(seqnames = x$seqnames, pos = x$pos, seqinfo = x$seqinfo)
+y <- make_test_data(m = 4L, n = 200000, sim_counts = FALSE)
+y <- MTuples(seqnames = y$seqnames, pos = y$pos, seqinfo = y$seqinfo)
+
+
+```
+
+# Other notes
+For fully generality, that is, to mimic `IRanges`/`GenomicRanges` behaviour, I really should define a `MTuples` class that is solely contains `pos` data and then define a `GenomicMTuples` class that includes `seqnames`, `strand` and `pos` as an `MTuples` object. 
+
+I would then define a "tuples algebra" on the `MTuples` object, analogous to the "Allen's interval algebra" implemented for `IRanges` objects. Then comparison methods for `GenomicMTuples` objects would involve partial inheritance from those defined for `MTuples` objects. The `compare` method for `MTuples` would need special codes, like those used by `IRanges`. However, this is quite complicated due to the sheer number of possible m-tuples and their corresponding "overlaps".
+
+__However, this is overkill for my humble package(s). If m-tuples are considered by other Bioconductor members to be a generally useful concept, then it would be worth investing the time and effort to have the `MTuples`/`GenomicMTuples` infrastructure more closely mimic the `IRanges`/`GenomicRanges` infrastructure.__
