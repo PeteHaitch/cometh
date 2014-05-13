@@ -1,7 +1,6 @@
 .Rproj.user
 .Rhistory
 .RData
-man/*.Rd
 *.o
 *.so
 *.html
