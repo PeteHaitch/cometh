@@ -17,7 +17,7 @@ using namespace Rcpp;
 //' @keywords internal
 //' 
 //' 
-// [[Rcpp::export]]
+// [[Rcpp::export(".rowSumsHashInternalCpp")]]
 LogicalVector rowSumsHashInternalCpp(IntegerMatrix x){
   
   int nr = x.nrow();

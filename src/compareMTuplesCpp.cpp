@@ -24,7 +24,7 @@ using namespace Rcpp;
 //' @keywords internal
 //'
 //' 
-// [[Rcpp::export]]
+// [[Rcpp::export(".compareMTuplesCpp")]]
 IntegerVector compareMTuplesCpp(IntegerVector a, IntegerVector b, IntegerMatrix C){
   int n = a.size();
   IntegerVector val(n);

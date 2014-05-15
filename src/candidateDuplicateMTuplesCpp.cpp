@@ -20,7 +20,7 @@ using namespace Rcpp;
 //' candidate. Further checking is required of these candidates, e.g. using the 
 //' \code{\link[base]{duplicated.array}} method.
 //' 
-// [[Rcpp::export]]
+// [[Rcpp::export(".candidateDuplicateMTuplesCpp")]]
 LogicalVector candidateDuplicateMTuplesCpp(IntegerVector a, IntegerVector b, IntegerMatrix C){
   
   int nr = C.nrow();

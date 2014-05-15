@@ -31,7 +31,7 @@
   }
   
   if (!is.na(m)){
-    if (!allRowsSortedCpp(pos)){
+    if (!.allRowsSortedCpp(pos)){
       msg <- validMsg(msg, paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm')))
     }
   }

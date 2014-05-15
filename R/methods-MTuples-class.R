@@ -93,7 +93,7 @@ MTuples <- function(seqnames = Rle(),
       ## When m = 2, need extra check that start != pos, because this isn't caught by the validity methods when a single m-tuple is passed.
       ## Otherwise this supposed 2-tuple is silently converted to a 1-tuple.
       ## See GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
-      if (!allRowsSortedCpp(pos)){
+      if (!.allRowsSortedCpp(pos)){
         stop(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm')))
       }
       ranges <- IRanges(start = pos[, 1L], end = pos[, 2L])
@@ -135,7 +135,7 @@ setMethod("getIPD", "MTuples", function(x){
   if (m == 1L){
     stop("It does not make sense to compute IPD when ", sQuote('m'), " = 1.")
   } else{
-    rowDiffsCpp(getPos(x)) # matrixStats::rowDiffs(getPos(x)) is a (slower) alternative
+    .rowDiffsCpp(getPos(x)) # matrixStats::rowDiffs(getPos(x)) is a (slower) alternative
   }
 })
 
@@ -189,7 +189,7 @@ setMethod("getIPD", "MTuples", function(x){
   ## Do this without actually forming cbind(a, b, c).
   ## Rcpp solution is > 1000x faster than equivalent R solution when 
   ## length(x) = 2,000,000
-  val <- compareMTuplesCpp(a, b, c)
+  val <- .compareMTuplesCpp(a, b, c)
   
   return(val)
 }
@@ -231,7 +231,7 @@ setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
   ## Uses the "rowSums hash" approach.
   ## It is very fast and produces identical results to 
   ## base::duplicated.array(x, MARGIN = 1).
-  ## candidateDuplicateMTuplesCpp only returns __candidate__ duplicates.
+  ## .candidateDuplicateMTuplesCpp only returns __candidate__ duplicates.
   ## These candidates need to be further checked using the (slower) 
   ## base::duplicated.array method
   
@@ -244,7 +244,7 @@ setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
     b <- as.integer(strand(x))
     C <- getPos(x)[seq.int(from = length(x), to = 1), , drop = FALSE]
   }
-    d <- candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
+    d <- .candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
                         b = as.integer(strand(x)), 
                         C = getPos(x))
     d[d] <- duplicated(cbind(a[d], b[d], C[d, , drop = FALSE], 
@@ -265,6 +265,8 @@ duplicated.MTuples <- function(x, incomparables = FALSE, ...){
 #' @export
 setMethod("duplicated", "MTuples", .duplicated.MTuples)
 
+## TODO: .anyDuplicated() should return 0 if no duplicates and index 
+## of first duplicate __NOT__ TRUE/FALSE
 .anyDuplicated.MTuples <- function(x, incomparables = FALSE){
   if (!identical(incomparables, FALSE)){
     stop(sQuote('anyDuplicated'), " method for ", sQuote('MTuples'), 
@@ -274,7 +276,7 @@ setMethod("duplicated", "MTuples", .duplicated.MTuples)
   a <- as.integer(seqnames(x))
   b <- as.integer(strand(x))
   C <- getPos(x)
-  d <- candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
+  d <- .candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
                                     b = as.integer(strand(x)), 
                                     C = getPos(x))
   if (isTRUE(any(d))){

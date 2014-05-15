@@ -1,14 +1,14 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-//' Calculates differences for each row in a matrix.
+//' An internal function to compute differences for each row in a matrix.
 //' 
 //' @param A An integer \eqn{N \times K} matrix.
 //' 
 //' @keywords internal
 //'
 //' @return An integer \eqn{N \times (K - 1)} matrix.
-// [[Rcpp::export]]
+// [[Rcpp::export(".rowDiffsCpp")]]
 IntegerMatrix rowDiffsCpp(IntegerMatrix A){
   int nrow = A.nrow(), ncol = A.ncol();
   IntegerMatrix D(nrow, ncol - 1);
