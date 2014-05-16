@@ -9,7 +9,7 @@ output:
 
 <!--
 %\VignetteEngine{knitr::knitr}
-%\VignetteIndexEntry{Unexplained subsetting behaviour of classes based on SummarizedExperiment}
+%\VignetteIndexEntry{Creating MTuples and CoMeth classes}
 -->
 
 # Overview
@@ -35,7 +35,7 @@ An m-tuple does not naturally fit into a `GRanges` object, which consists of `se
 When $m \geq 3$ we need to also store the "extra" positions (`extraPos`), e.g. `pos2` when $m = 3$. These are stored as "non-optional metadata" via `GenomicRanges:::extraColumnSlotNames`. I'm still figuring out what the best structure is for storing the `extraPos`, e.g. `matrix`, `DataFrame`, `List`, etc.
 
 ## Storing `extraPos` as a `DataFrame`
-```{r}
+```{r, eval = FALSE}
 require(GenomicRanges)
 .MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "DataFrame"))
 MTuples <- function(extraPos = DataFrame(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
@@ -53,19 +53,19 @@ mtuples_4 <- MTuples(extraPos = DataFrame(a = seq(from = 3, to = 202, by = 2), b
 mtuples_4
 ```
 This produces a warning when subsetting but appears to correctly subset the `extraPos` `DataFrame`:
-```{r}
+```{r, eval = FALSE}
 mtuples_4[1:3, ]
 mtuples_4[1:3, ]@extraPos
 ```
 But definitely "keeps safe" the `extraPos` data:
-```{r}
+```{r, eval = FALSE}
 mcols(mtuples_4) <- NULL
 mtuples_4
 rm(mtuples_4)
 ```
 
 ## Storing `extraPos` as a `matrix`
-```{r}
+```{r, eval = FALSE}
 .MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrix"))
 MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
@@ -82,12 +82,12 @@ mtuples_4 <- MTuples(extraPos = matrix(c(seq(from = 3, to = 202, by = 2), seq(fr
 mtuples_4
 ```
 Subsetting appears to work correctly subset the `extraPos` `matrix`:
-```{r}
+```{r, eval = FALSE}
 mtuples_4[1:3, ]
 mtuples_4[1:3, ]@extraPos
 ```
 And definitely "keeps safe" the `extraPos` data:
-```{r}
+```{r, eval = FALSE}
 mcols(mtuples_4) <- NULL
 mtuples_4
 rm(mtuples_4)
@@ -95,7 +95,7 @@ rm(mtuples_4)
 
 ## Storing `extraPos` as a `List`
 `List` objects are a very general class; I have used an `IntegerList` in this example class definition.
-```{r, error = TRUE}
+```{r eval = FALSE, error = TRUE}
 .MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "IntegerList"))
 MTuples <- function(extraPos = IntegerList(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
@@ -112,11 +112,11 @@ mtuples_4 <- MTuples(extraPos = IntegerList(a = seq(from = 3, to = 202, by = 2),
 mtuples_4
 ```
 This clearly hasn't worked as I intended:
-```{r, error = TRUE}
+```{r, eval = FALSE, error = TRUE}
 mtuples_4@extraPos
 ```
 Subsetting doesn't work:
-```{r, error = TRUE}
+```{r, eval = FALSE, error = TRUE}
 mtuples_4[1:3, ]
 mtuples_4[1:3, ]@extraPos
 rm(mtuples_4)
@@ -127,7 +127,7 @@ I need to also allow for `extraPos` to be "absent", when $m = 1$ or $m = 2$.
 
 ### `extraPos` as `matrixOrNULL`
 I first try this by defining `extraPos` to be a `matrixOrNULL` class union. Unfortunately this doesn't work as expected:
-```{r, error = TRUE}
+```{r, eval = FALSE, error = TRUE}
 setClassUnion("matrixOrNULL", c("matrix", "NULL"))
 .MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrixOrNULL"))
 MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
@@ -152,7 +152,7 @@ This is partly caused because the `show` method does not work when `extraPos` is
 ### `extraPos` as `matrix` of `NA`s
 Instead, I keep `extraPos` as a `matrix` with 1 column filled with `NA` when $m = 1$ or $m = 2$:
 
-```{r}
+```{r, eval = FALSE}
 .MTuples <- setClass('MTuples', contains="GRanges", representation(extraPos = "matrix"))
 MTuples <- function(extraPos = matrix(), seqnames = Rle(), ranges = IRanges(), strand = Rle("*", length(seqnames)), ..., seqlengths = NULL, seqinfo = NULL){
   gr <- GRanges(seqnames = seqnames, ranges = ranges, strand = strand, ..., seqlengths = seqlengths, seqinfo = seqinfo)
@@ -174,7 +174,7 @@ mtuples_1
 ```
 
 Subsetting works as expected:
-```{r, error = TRUE}
+```{r, eval = FALSE, error = TRUE}
 mtuples_4[1:3, ]
 mtuples_4[1:3, ]@extraPos
 mtuples_2[1:3, ]
@@ -183,12 +183,12 @@ mtuples_1[1:3, ]
 mtuples_1[1:3, ]@extraPos
 ```
 A downside is the extra storage required to store `extraPos` as a `matrix`. An `Rle` is __far__ more efficient for a large number of mtuples:
-```{r}
+```{r, eval = FALSE}
 print(object.size(matrix(NA, nrow = 10000000)), units = "auto")
 print(object.size(Rle(rep(NA, 10000000))), units = "auto")
 ```
 The `MTuples` constructor produces a warning when given no arguments (whereas the `GRanges` constructor does not):
-```{r}
+```{r, eval = FALSE}
 MTuples()
 GRanges()
 ```
@@ -200,7 +200,7 @@ Using a `matrix` to store the `extraPos` gives the desired subsetting behaviour.
 Now that I have defined the `MTuples` class, I can define the `CoMeth` class. An `CoMeth` object is derived from the `SummarizedExperiment` class but with a `MTuples` object rather than a `GRanges` object in the `rowData` slot.
 
 Firstly, I create some test data:
-```{r}
+```{r, eval = FALSE}
 # Function to make test data
 make_test_data <- function(m, n){
   test_data <- lapply(cbind(data.frame(chr = c(rep('chr1', 0.6 * n ), rep('chr2', 0.3 * n), rep('chrX', 0.1 * n)), stringsAsFactors = FALSE), as.data.frame(matrix(sort(sample(1:(n * m * 2), m * n, replace = FALSE)), ncol = m, byrow = T, dimnames = list(NULL, paste0('pos', 1:m)))), as.data.frame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))), function(x){x})
@@ -223,7 +223,7 @@ seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(24925062
 ```
 
 Now, the `CoMeth` class definition and a prototype constructor. The prototype constructor can only handle a single sample:
-```{r}
+```{r, eval = FALSE}
 .CoMeth <- setClass('CoMeth', contains="SummarizedExperiment")
 CoMeth <- function(m, sample_names, pos, counts, strand, methylation_type, seqinfo, sort_cometh = TRUE){
   ## Combine the list-wise data into matrix-like data whilst taking care of common and sample-specific m-mtuples, i.e. filling in zeros when a sample doesn't have any observations for that m-tuple.
@@ -258,12 +258,12 @@ CoMeth <- function(m, sample_names, pos, counts, strand, methylation_type, seqin
 cometh_3 <- CoMeth(m = m, sample_names = sample_names, pos = pos, counts = counts, strand = strand, methylation_type = methylation_type, seqinfo = seqinfo, sort_cometh = TRUE)
 ```
 This seems to work as I had hoped, namely `rowData(cometh_3)` is a `MTuples` object:
-```{r}
+```{r, eval = FALSE}
 cometh_3
 rowData(cometh_3)
 ```
 
 # Session info
-```{r}
+```{r, eval = TRUE}
 sessionInfo()
 ```

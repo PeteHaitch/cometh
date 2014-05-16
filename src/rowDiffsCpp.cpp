@@ -8,6 +8,10 @@ using namespace Rcpp;
 //' @keywords internal
 //'
 //' @return An integer \eqn{N \times (K - 1)} matrix.
+//' 
+//' @note This function silently coerces numeric matrices to integer matrices
+//' and does integer subtraction. \emph{This will give unexpected results but
+//' it's not a problem for me since I only use it on integer matrices.}
 // [[Rcpp::export(".rowDiffsCpp")]]
 IntegerMatrix rowDiffsCpp(IntegerMatrix A){
   int nrow = A.nrow(), ncol = A.ncol();

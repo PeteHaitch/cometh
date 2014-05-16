@@ -241,7 +241,7 @@ setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
     C <- getPos(x)
   } else{
     a <- rev(as.integer(seqnames(x)))
-    b <- as.integer(strand(x))
+    b <- rev(as.integer(strand(x)))
     C <- getPos(x)[seq.int(from = length(x), to = 1), , drop = FALSE]
   }
     d <- .candidateDuplicateMTuplesCpp(a = as.integer(seqnames(x)), 
@@ -280,10 +280,18 @@ setMethod("duplicated", "MTuples", .duplicated.MTuples)
                                     b = as.integer(strand(x)), 
                                     C = getPos(x))
   if (isTRUE(any(d))){
-    anyDuplicated(cbind(a[d], b[d], C[d, , drop = FALSE], deparse.level = 0))
+    # add (if non-zero) is the index of the first duplicated element in d[d], 
+    # instead of d (which is what we really want).
+    add <- anyDuplicated(cbind(a[d], b[d], C[d, , drop = FALSE], deparse.level = 0))
+    if (!identical(add, 0L)){
+      ad <- which(d)[add]
+    } else{
+      ad <- 0L
+    }
   } else{
-    FALSE
+    ad <- 0L
   }
+  return(ad)
 }
 
 # anyDuplicated() checks seqnames, strand and positions of each m-tuple.

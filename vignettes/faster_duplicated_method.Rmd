@@ -5,6 +5,11 @@ date: 11 May 2014
 output: html_document
 ---
 
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{A faster duplicated method}
+-->
+
 # Aim
 
 The current `duplicated()` method for `MTuples` objects is a two-headed beast. When `m` $< 3$ it uses the `duplicated()` method for `GRanges` objects, `GenomicRanges:::.duplicated.GenomicRanges`, which is very fast because it uses custom written C code. However, when `m` $\geq 3$, it basically uses `base::duplicated.array` with `MARGIN = 1`, which is very slow when there are a large number of rows.
@@ -20,7 +25,7 @@ Many of the methods currently defined in the `IRanges` package are currently bei
 
 ## Example data
 
-```{r}
+```{r, eval = FALSE}
 ## Create some test data (a matrix)
 # The matrix, x, has at least 3 columns, all of which contain integers.
 # The first column is an integer-encoding of a chromosome and so there are approximately 20-30 unique values. 
@@ -76,7 +81,7 @@ y_2 <- matrix2GR(x_2)
 
 This method gives the correct results and will be used as the gold standard.
 
-```{r}
+```{r, eval = FALSE}
 # Get the gold standard calls and benchmark
 system.time(z_1 <- duplicated(x_1, MARGIN = 1))
 system.time(z_2 <- duplicated(x_2, MARGIN = 1))
@@ -88,7 +93,7 @@ system.time(z_8 <- duplicated(x_8, MARGIN = 1))
 
 This method is very fast and gives identical results to the gold standard. However, it only works when `m` = 1 or `m = 2`.
 
-```{r}
+```{r, eval = FALSE}
 # Check identical to gold standard
 identical(duplicated(y_1), z_1)
 identical(duplicated(y_2), z_2)
@@ -102,7 +107,7 @@ system.time(duplicated(y_2))
 
 This uses a simple hash of each row, namely the `rowSums`, to identify candidate duplicates. These candidates are then checked using the rigorous (but slow) `base::duplicated.arraay` method.
 
-```{r}
+```{r, eval = FALSE}
 # rowSums-based hash method
 rowSumsHash <- function(x){
   z <- rowSums(x)
@@ -127,7 +132,7 @@ system.time(rowSumsHash(x_8))
 ## `rowSumsHashCpp(x)`
 
 An alternative implementation of `rowSumsHash` that does part of the work using Rcpp. __Currently, this method still requires a call to `base::duplicated.array`, although it might be possible to change this behaviour for an additional (small) speed-up.__
-```{r}
+```{r, eval = FALSE}
 rowSumsHashCpp <- function(x){
   d <- rowSumsHashInternalCpp(x)
   d[d] <- duplicated(x[d, ])
@@ -153,7 +158,7 @@ system.time(rowSumsHashCpp(x_8))
 * Provide `seqnames`, `strand`, `pos` (rather than `x`) to function that computes duplicates
 
 # `sessionInfo()`
-```{r}
+```{r, eval = FALSE}
 sessionInfo()
 ```
 

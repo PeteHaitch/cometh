@@ -117,18 +117,18 @@ setClass('MTuples',
   msg <- NULL
   
   ## Check assay names
-  if (isTRUE(all(is.na(object@ranges@start)))){
+  if (isTRUE(all(is.na(object@rowData@ranges@start)))){
     m <- NA_integer_
-  } else if (isTRUE(all(is.na(object@extraPos)))){
+  } else if (isTRUE(all(is.na(object@rowData@extraPos)))){
     # m = 1 or 2
-    if (isTRUE(all(object@ranges@start == (object@ranges@start + object@ranges@width - 1L)))){
+    if (isTRUE(all(object@rowData@ranges@start == (object@rowData@ranges@start + object@rowData@ranges@width - 1L)))){
       m <- 1L
     } else{
       m <- 2L
     }
   } else{
     # m > 2
-    m <- ncol(object@extraPos) + 2L
+    m <- ncol(object@rowData@extraPos) + 2L
   }
   if (!identical(names(object@assays$data@listData), .make_m_tuple_names(m))){
     msg <- validMsg(msg, paste0("assay names must be: ", paste0("assay names must be: ", paste0(sQuote(.make_m_tuple_names(m)), collapse = ', ')), "."))

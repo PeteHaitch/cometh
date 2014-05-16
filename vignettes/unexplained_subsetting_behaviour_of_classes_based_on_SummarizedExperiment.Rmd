@@ -20,12 +20,12 @@ This example shows the unexpected (to me) behaviour.
 ## `MyClass` definition
 Define `MyClass`, basically a `SummarizedExperiment` with an `extraSlot`, which is a numeric vector of the same length as the number of rows in the `rowData`:
 
-```{r}
+```{r, eval = FALSE}
 require(GenomicRanges)
 .MyClass <- setClass("MyClass", representation(extraSlot = "vector"), contains = "SummarizedExperiment")
 ```
 ## `MyClass` constructor 
-```{r}
+```{r, eval = FALSE}
 MyClass <- function(assays, gr, extraSlot){
   se <- SummarizedExperiment(assays = assays, rowData = gr)
   mc <- .MyClass(se, extraSlot = extraSlot)
@@ -36,7 +36,7 @@ MyClass <- function(assays, gr, extraSlot){
 ## `[` method definition for `MyClass`
 Define the `[` method for `MyClass` objects. Should basically do the same thing as `[` for a `SummarizedExperiment` but also subset the `extraSlot`:
 
-```{r}
+```{r, eval = FALSE}
 setMethod("[", c("MyClass", "ANY", "missing"),
           function(x, i, j, ..., drop = FALSE)
           {
@@ -54,7 +54,7 @@ setMethod("[", c("MyClass", "ANY", "missing"),
 ```
 
 ## Example data
-```{r}
+```{r, eval = FALSE}
 nrows <- 20
 ncols <- 6
 counts <- matrix(runif(nrows * ncols, 1, 1e4), nrows)
@@ -70,15 +70,15 @@ ex@extraSlot
 
 ## Testing the `[` method for `MyClass` objects
 As expected, the following contains 10 elements:
-```{r}
+```{r, eval = FALSE}
 ex[1:10, ]@extraSlot
 ```
 As unexpected, the following contains 20 elements. __Why__?
-```{r}
+```{r, eval = FALSE}
 ex[1:10, 2]@extraSlot
 ```
 As unexpected, the following contains 10 elements. __Why? This is the exact same code as the final line of the `[` method definition:__
-```{r}
+```{r, eval = FALSE}
 initialize(ex, as(ex, "SummarizedExperiment")[1:10, 2, drop = FALSE], extraSlot = ex@extraSlot[1:10])@extraSlot
 ```
 
@@ -88,6 +88,6 @@ I never got to the bottom of this. I didn't post a question to the Bioconductor 
 [^cometh_class_definition]: The `CoMeth` class definition changed to use the `MTuples` class, which extends the `GRanges` class, as the `rowData`, rather than the `GRanges` class itself. Effectively, the `extraPos` information is stored in the `MTuples` object and preserved in subsetting by use of the `GenomicRanges:::extraColumnSlotNames` function (see class definition of `MTuples` in `R/AllClasses.R` and the vignette _Creating MTuples and CoMeth classes_).
 
 # Session info
-```{r}
+```{r, eval = FALSE}
 sessionInfo()
 ```

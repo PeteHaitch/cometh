@@ -1,52 +1,4 @@
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Define test data.
-###
-context('Define test data')
-
-## TODO: Move make_test_data() to its own R file and call it in both test-MTuples_class.R and test-CoMeth_class.R. Relatedly, figure out the best way to call this function from these test scripts.
-## Function to create test data. Returns a list of arguments for the MTuples constructor (if sim_counts = FALSE) or a list of arguments for the CoMeth constructor (if sim_counts = TRUE)
-make_test_data <- function(m, n, s, sim_counts = TRUE){
-  
-  ## Only simulate a single sample if using sim_counts = FALSE otherwise the number of returned m-tuples is not n
-  if (!sim_counts){
-    s <- 1
-  }
-  
-  val <- lapply(seq_len(s), FUN = function(ss, sim_counts = sim_counts){
-    p <- c(round(0.6 * n, 0), round(0.3 * n, 0), round(0.1 * n, 0))
-    seqnames <- Rle(rep(paste0('chr', c(1, 2, 'X')), times = p))
-    pos <- DataFrame(matrix(sort(sample(1:(n * m * 10), m * n, replace = FALSE)), ncol = m, byrow = TRUE, dimnames = list(NULL, paste0('pos', 1:m))))
-    if (sim_counts){
-      counts <- DataFrame(matrix(rpois(2^m * n, 4), ncol = 2^m, dimnames = list(NULL, sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')})))))))
-      val <- list(seqnames = seqnames, pos = pos, counts = counts)
-    } else{
-      val <- list(seqnames = seqnames, pos = pos)
-    }
-    return(val)
-  }, sim_counts = sim_counts)
-  names(val) <- paste0('sample', seq_len(s))
-  
-  seqinfo <- Seqinfo(seqnames = c('chr1', 'chr2', 'chrX'), seqlengths = c(249250621, 243199373, 155270560), genome = 'hg19')
-  if (sim_counts){
-    methylation_type <- as(rep('CG', length(val)), "CharacterList")
-    names(methylation_type) <- names(val)
-    seqnames <- RleList(lapply(val, FUN = function(x){x$seqnames}))
-    pos <- DataFrameList(lapply(val, FUN = function(x){x$pos}))
-    counts <- DataFrameList(lapply(val, FUN = function(x){x$counts}))
-    sample_names <- as(names(val), "CharacterList")
-    val <- list(sample_names = sample_names, methylation_type = methylation_type, counts = counts, seqnames = seqnames, pos = pos, seqinfo = seqinfo)
-    #val <- CoMeth(sample_names = sample_names, methylation_type = methylation_type, counts = counts, seqnames = seqnames, pos = pos, seqinfo = seqinfo, verbose = TRUE)
-  } else{
-    seqnames <- val[[1]]$seqnames
-    pos <- as.matrix(val[[1]]$pos)
-    val <- list(seqnames = seqnames, pos = pos, seqinfo = seqinfo)
-    #val <- MTuples(seqnames = seqnames, pos = pos, seqinfo = seqinfo)
-  }
-  
-  return(val)
-}
-    
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Test MTuples constructor.
 ###
 context("MTuples constructor")
@@ -74,14 +26,14 @@ test_that("MTuples constructor returns an MTuples object when m >= 3", {
 context("MTuples validity")
 
 test_that("Ensure m-tuple positions are checked to be sorted", {
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(10:20, 15:5), ncol = 2)), throws_error("positions in each m-tuple must be sorted in strictly increasing order, i.e. ‘pos1’ < ‘pos2’ < ‘...’ < ‘posm’"))
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:10, 21:30, 11:20), ncol = 3)), throws_error("positions in each m-tuple must be sorted in strictly increasing order, i.e. ‘pos1’ < ‘pos2’ < ‘...’ < ‘posm’"))
-  expect_that(MTuples('chr1', pos = matrix(c(1, 1), ncol = 2)), throws_error("positions in each m-tuple must be sorted in strictly increasing order, i.e. ‘pos1’ < ‘pos2’ < ‘...’ < ‘posm’")) # Test for GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(10:20, 15:5), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:10, 21:30, 11:20), ncol = 3)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
+  expect_that(MTuples('chr1', pos = matrix(c(1, 1), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm')))) # Test for GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
 })
 
 test_that("Ensure m-tuples positions are checked to be all positive", {
   expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(-1:10), ncol = 1)), throws_error("positions in each m-tuple must be positive integers"))
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8), ncol = 2)), throws_error("positions in each m-tuple must be sorted in strictly increasing order, i.e. ‘pos1’ < ‘pos2’ < ‘...’ < ‘posm’"))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
   expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8, 17:30), ncol = 3)), throws_error("positions in each m-tuple must be positive integers"))
 })
 
@@ -213,7 +165,7 @@ context("IPD method for MTuples objects")
 
 test_that("IPD works when m = 1", {
   m1_x <- MTuples("chr1", pos = matrix(1:10, ncol = 1))
-  expect_that(getIPD(m1_x), throws_error("It does not make sense to compute IPD when ‘m’ = 1"))
+  expect_that(getIPD(m1_x), throws_error(paste0("It does not make sense to compute IPD when ", sQuote('m'), " = 1.")))
 })
 
 test_that("IPD works when m = 2", {
@@ -326,14 +278,14 @@ test_that("'m' check works", {
   m2_y <- MTuples("chr1", pos = matrix(11:30, ncol = 2))
   m3_x <- MTuples("chr1", pos = matrix(c(9:11, 14:40), ncol = 3))
   m3_y <- MTuples("chr1", pos = matrix(11:40, ncol = 3))
-  expect_that(compare(m1_x, m2_x), throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(compare(m1_x, m3_x), throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x <= m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x < m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x == m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x != m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x >= m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
-  expect_that(m1_x > m2_x, throws_error("Cannot ‘compare’ ‘MTuples’ objects with different ‘m’."))
+  expect_that(compare(m1_x, m2_x), throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(compare(m1_x, m3_x), throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(m1_x <= m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(m1_x < m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(m1_x == m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(m1_x != m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
+  expect_that(m1_x >= m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))  
+  expect_that(m1_x > m2_x, throws_error(paste0("Cannot ", sQuote('compare'), " ",  sQuote('MTuples'), " objects with different ", sQuote('m'), ".")))
 })
 
 context("'findOverlaps'-based methods work")
@@ -377,8 +329,8 @@ test_that("'findOverlaps' with 'type = any, start, end or within'", {
 test_that("'findOverlaps' fails with different 'm'", {
   m1 <- MTuples("chr1", pos = matrix(1:6, ncol = 1))
   m2 <- MTuples("chr1", pos = matrix(1:12, byrow = TRUE, ncol = 2))
-  expect_that(findOverlaps(m1, m2, type = 'any'), throws_error("Cannot ‘findOverlaps’ between ‘MTuples’ and ‘MTuples’ if they have different ‘m’."))
-  expect_that(findOverlaps(m1, m2, type = 'equal'), throws_error("Cannot ‘findOverlaps’ between ‘MTuples’ and ‘MTuples’ if they have different ‘m’."))
+  expect_that(findOverlaps(m1, m2, type = 'any'), throws_error(paste0("Cannot ", sQuote("findOverlaps"), " between ", sQuote("MTuples"), " and ", sQuote("MTuples"), " if they have different ", sQuote("m"), ".")))
+  expect_that(findOverlaps(m1, m2, type = 'equal'), throws_error(paste0("Cannot ", sQuote("findOverlaps"), " between ", sQuote("MTuples"), " and ", sQuote("MTuples"), " if they have different ", sQuote("m"), ".")))
 })
 
 context("mcols works")
@@ -389,13 +341,10 @@ test_that("'mcols' works", {
 })
 
 context("duplicated works")
-test_that("'duplicated' works", {
+test_that("'fromLast = FALSE' works", {
   m1 <- MTuples("chr1", pos = matrix(rep(11:13, each = 3), ncol = 1), strand = rep(c('+', '-', '*'), times = 3))
   m2 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3)), ncol = 2), strand = rep(c('+', '-', '*'), times = 3))
   m3 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3), rep(17:19, each = 3)), ncol = 3), strand = rep(c('+', '-', '*'), times = 3))
-  expect_that(any(duplicated(m1)), is_false())
-  expect_that(any(duplicated(m2)), is_false())
-  expect_that(any(duplicated(m3)), is_false())
   expect_that(duplicated(c(m1, m1[1, ])), is_identical_to(c(rep(FALSE, 9), TRUE)))
   expect_that(duplicated(c(m1, m1)), is_identical_to(c(rep(FALSE, 9), rep(TRUE, 9))))
   expect_that(duplicated(c(m2, m2[1, ])), is_identical_to(c(rep(FALSE, 9), TRUE)))
@@ -403,8 +352,35 @@ test_that("'duplicated' works", {
   expect_that(duplicated(c(m3, m3[1, ])), is_identical_to(c(rep(FALSE, 9), TRUE)))
   expect_that(duplicated(c(m3, m3)), is_identical_to(c(rep(FALSE, 9), rep(TRUE, 9))))
   expect_that(duplicated(c(MTuples('chr1', pos = matrix(c(11, 14, 18, 11, 15, 17, 12, 14, 17), byrow = TRUE, ncol = 3)), m3)), is_identical_to(rep(FALSE, 12)))
-  ## TODO: Add tests for when fromLast = TRUE
-  expect_true(FALSE)
+})
+
+test_that("'fromLast = TRUE' works", {
+  m1 <- MTuples("chr1", pos = matrix(rep(11:13, each = 3), ncol = 1), strand = rep(c('+', '-', '*'), times = 3))
+  m2 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3)), ncol = 2), strand = rep(c('+', '-', '*'), times = 3))
+  m3 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3), rep(17:19, each = 3)), ncol = 3), strand = rep(c('+', '-', '*'), times = 3))
+  expect_that(duplicated(c(m1, m1[1, ]), fromLast = TRUE), is_identical_to(c(TRUE, rep(FALSE, 9))))
+  expect_that(duplicated(c(m1, m1), fromLast = TRUE), is_identical_to(c(rep(TRUE, 9), rep(FALSE, 9))))
+  expect_that(duplicated(c(m2, m2[1, ]), fromLast = TRUE), is_identical_to(c(TRUE, rep(FALSE, 9))))
+  expect_that(duplicated(c(m2, m2), fromLast = TRUE), is_identical_to(c(rep(TRUE, 9), rep(FALSE, 9))))
+  expect_that(duplicated(c(m3, m3[1, ]), fromLast = TRUE), is_identical_to(c(TRUE, rep(FALSE, 9))))
+  expect_that(duplicated(c(m3, m3), fromLast = TRUE), is_identical_to(c(rep(TRUE, 9), rep(FALSE, 9))))
+  expect_that(duplicated(c(MTuples('chr1', pos = matrix(c(11, 14, 18, 11, 15, 17, 12, 14, 17), byrow = TRUE, ncol = 3)), m3), fromLast = TRUE), is_identical_to(rep(FALSE, 12)))
+})
+
+test_that("'anyDuplicated' works", {
+  m1 <- MTuples("chr1", pos = matrix(rep(11:13, each = 3), ncol = 1), strand = rep(c('+', '-', '*'), times = 3))
+  m2 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3)), ncol = 2), strand = rep(c('+', '-', '*'), times = 3))
+  m3 <- MTuples("chr1", pos = matrix(c(rep(11:13, each = 3), rep(14:16, each = 3), rep(17:19, each = 3)), ncol = 3), strand = rep(c('+', '-', '*'), times = 3))
+  expect_that(anyDuplicated(m1), is_identical_to(0L))
+  expect_that(anyDuplicated(m2), is_identical_to(0L))
+  expect_that(anyDuplicated(m3), is_identical_to(0L))
+  expect_that(anyDuplicated(c(m1, m1[1, ])), is_identical_to(10L))
+  expect_that(anyDuplicated(c(m1, m1)), is_identical_to(10L))
+  expect_that(anyDuplicated(c(m2, m2[1, ])), is_identical_to(10L))
+  expect_that(anyDuplicated(c(m2, m2)), is_identical_to(10L))
+  expect_that(anyDuplicated(c(m3, m3[1, ])), is_identical_to(10L))
+  expect_that(anyDuplicated(c(m3, m3)), is_identical_to(10L))  
+  expect_that(anyDuplicated(c(MTuples('chr1', pos = matrix(c(11, 14, 18, 11, 15, 17, 12, 14, 17), byrow = TRUE, ncol = 3)), m3)), is_identical_to(0L))
 })
 
 context("unique works")

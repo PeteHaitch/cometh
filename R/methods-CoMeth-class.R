@@ -464,6 +464,7 @@ setMethod("combine", "CoMeth", function(x, y, ...){
 ### Comparison
 ###
 
+## TODO: Check the other comparison methods work (i.e. those defined for MTuples)
 ## compare defers to the method defined for MTuples.
 #' @export
 setMethod("compare", c("CoMeth", "CoMeth"), function(x, y){

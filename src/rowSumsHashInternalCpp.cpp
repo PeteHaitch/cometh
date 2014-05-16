@@ -1,10 +1,13 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-//' An internal helper function used in finding duplicate rows of an integer matrix.
+// TODO: Remove from package as it is not used.
+//' An internal helper function used in finding duplicate rows of an integer 
+//' matrix.
 //' 
 //' @details
-//' Not actually used in cometh package but written during development of mTuplesHashCpp.
+//' Not actually used in cometh package but written during development of 
+//' mTuplesHashCpp.
 //' 
 //' @param x An integer matrix.
 //' 

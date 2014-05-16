@@ -7,6 +7,11 @@ output:
     toc: yes
 ---
 
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Comparison-type methods for MTuples}
+-->
+
 # Aim
 
 I need to define the set set of comparison-type methods for the `MTuples` class.
@@ -91,111 +96,21 @@ From `?compare`:
 
 I do not yet have a set of predefined codes to assign m-tuples on the same space (i.e. on the same underlying sequenc and strand). In fact, I'm not even sure whether this is possible given the multitude of ways that two m-tuples can overlap, particularly with large `m`. Instead, I will keep things simple and just return a value less than zero (`x < y`), equal to zero (`x == y`) or greater than zero (`x > y`).
 
-```{r, eval = FALSE}
-## This is adapted from .GenomicRanges.compare.
-.MTuples.compare <- function(x, y){
-  
-  if (length(x) != length(y)){
-    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), " objects when ", sQuote('length(x)'), " != ", sQuote('length(y)'))
-  }
-  
-  ## Check 'm' is identical
-  if (getM(x) != getM(y)){
-    stop("Cannot ", sQuote('compare'), " ", sQuote('MTuples'), " objects with different ", sQuote('m'))
-  }
-    
-  ## Pre-comparison step (see above for details).
-  ## merge() will fail if 'x' and 'y' don't have compatible underlying
-  ## sequences.
-  seqinfo <- merge(seqinfo(x), seqinfo(y))
-  seqlevels <- seqlevels(seqinfo)
-  if (any(diff(match(seqlevels(y), seqlevels)) < 0L)){
-    stop("the 2 objects to compare have ", sQuote('seqlevels'), " in incompatible orders.") # Error message differs slightly from that provided by .GenomicRanges.compare
-  }
-  ## This should only insert new seqlevels in the existing ones i.e. it
-  ## should NEVER drop or reorder existing levels
-  seqlevels(x) <- seqlevels(y) <- seqlevels
-    
-  ## This is where .MTuples.compare really differs from .GenomicRanges.compare
-  a <- as.integer(seqnames(x)) - as.integer(seqnames(y))
-  b <- as.integer(strand(x)) - as.integer(strand(y))
-  c <- getPos(x) - getPos(y)
-
-  ## Loop over cbind(a, b, c) by row and report the first non-zero element or the final element.
-  ## Do this without actually forming cbind(a, b, c).
-  ## Rcpp solution is > 1000x faster than equivalent R solution when length(x) = 2,000,000
-  val <- MTuplesCompareCpp(a, b, c)
-  
-  return(val)
-}
-```
-
-```{r, eval = FALSE}
-setMethod("compare", c("MTuples", "MTuples"), function(x, y){
-  .MTuples.compare(x, y)
-})
-```
-
 ## Element wise (aka "parallel") comparison of 2 `MTuples` objects
 
 We only need to implement `==` and `<=` methods. The other comparison binary operators (`!=`, `>=`, `<`, `>`) will then work out-of-the-box on `MTuples` objects thanks to the methods for `Vector` objects.
 
-
-```{r, eval = FALSE}
-setMethod("==", signature(e1 = "MTuples", e2 = "MTuples"),
-    function(e1, e2) { .MTuples.compare(e1, e2) == 0L }
-)
-
-setMethod("<=", signature(e1="GenomicRanges", e2="GenomicRanges"),
-    function(e1, e2) { .MTuples.compare(e1, e2) <= 0L }
-)
-```
-
 ## `duplicated`
 
-The current R-based `duplicated` method is very slow, taking roughly $44$ seconds when `length(x)` = $2, 000, 000$ and `m` = 3. Running `duplicated` on a `GRanges` object with $2,000,000$ elements takes only $0.3$ seconds, thanks to a C-level implementation.
+~The current R-based `duplicated` method is very slow, taking roughly $44$ seconds when `length(x)` = $2, 000, 000$ and `m` = 3. Running `duplicated` on a `GRanges` object with $2,000,000$ elements takes only $0.3$ seconds, thanks to a C-level implementation.~
+
+Now fixed. Takes less than 1 second to run `duplicated` on an MTuples oject with `m` = 3 and $2,000,000$ rows.
 
 `unique()` will work out-of-the-box on a `MTuples` object thanks to the method for `Vector` objects.
 
 ## `match`
 
 `%in%` will work out-of-the-box on `MTuples` objects thanks to the method for `Vector` objects.
-
-```{r, eval = FALSE}
-## Loosely based on match method for GenomicRanges objects
-setMethod("match", c("MTuples", "MTuples"), function(x, table, nomatch = NA_integer_, incomparables = NULL, ignore.strand = FALSE){
-  if (!isSingleNumberOrNA(nomatch)){
-    stop(sQuote('nomatch'), " must be a single number or ", sQuote('NA'))
-  }
-  if (!is.integer(nomatch)){
-    nomatch <- as.integer(nomatch)
-  }
-  if (!is.null(incomparables)){
-    stop(sQuote('match'), " method for ", sQuote('MTuples'), " objects only accepts ", sQuote('incomparables = NULL'))
-  }
-  if (!isTRUEorFALSE(ignore.strand)){
-    stop(sQuote('ignore.strand'), " must be ", sQuote('TRUE'), " or ", sQuote('FALSE'))
-  }
-  ## Calling merge() is the way to check that 'x' and 'table' are based on the same reference genome.
-  merge(seqinfo(x), seqinfo(table))
-
-  findOverlaps(x, table, type = "equal", select = "first")
-  }
-)
-
-
-```
-
-
-```{r, eval = FALSE, echo = FALSE}
-## Some test data
-x <- make_test_data(m = 4L, n = 200000, sim_counts = FALSE)
-x <- MTuples(seqnames = x$seqnames, pos = x$pos, seqinfo = x$seqinfo)
-y <- make_test_data(m = 4L, n = 200000, sim_counts = FALSE)
-y <- MTuples(seqnames = y$seqnames, pos = y$pos, seqinfo = y$seqinfo)
-
-
-```
 
 # Other notes
 For fully generality, that is, to mimic `IRanges`/`GenomicRanges` behaviour, I really should define a `MTuples` class that is solely contains `pos` data and then define a `GenomicMTuples` class that includes `seqnames`, `strand` and `pos` as an `MTuples` object. 

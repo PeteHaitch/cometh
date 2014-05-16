@@ -1,8 +1,8 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-//' An internal helper to check that each row of a numeric matrix is sorted in 
-//' strictly increasing order
+//' An internal helper function to check that each row of a numeric matrix is 
+//' sorted in strictly increasing order
 //' 
 //' @param A A numeric matrix
 //' 

@@ -1,8 +1,12 @@
 ### =========================================================================
-### Helper functions not exported 
+### Helper functions not exported.
+### For emphasis, __no function in this file will be exported__, because 
+### `@keywords internal` applies to the whole file 
+### (https://github.com/ramhiser/sparsediscrim/issues/26).
+### This means that these functions will not be documented by roxygen2, even
+### though the functions have roxygen2 tags.
 ### =========================================================================
 
-## TODO: Rewrite documentation but don't export function.
 #' Check whether all elements of a numeric vector are identical (within machine precision)
 #' @param x a numeric vector.
 # 
