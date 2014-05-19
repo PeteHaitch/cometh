@@ -295,7 +295,17 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
   }
   
   ## Construct CoMeth object
-  new("CoMeth", SummarizedExperiment(assays = combined_data$counts, rowData = mtuples, colData = colData, exptData = exptData, verbose = verbose))
+  if (m == 1L){
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), beta = list(.beta(combined_data$counts)))
+    class <- "CoMethI"
+  } else if (m == 2L){
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), zeta = list(.zeta(combined_data$counts, m)))
+    class <- "CoMethII"
+  } else{
+    class <- "CoMethIII"
+  }
+  new(class, SummarizedExperiment(assays = combined_data$counts, rowData = mtuples, colData = colData, exptData = exptData, verbose = verbose))
+  
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

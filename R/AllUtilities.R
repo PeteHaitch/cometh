@@ -151,3 +151,35 @@
   }
   sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')}))))
 }
+
+## TODO: Document
+## TOOD: Test
+.EP <- function(x){
+  p <- lapply(X = x, FUN = function(xx, y){
+    xx / y
+  }, y = Reduce(x = x, '+'))
+  val <- 1 - Reduce(x = lapply(p, function(pp){pp^2}), f = '+')
+  
+  return(val)
+}
+
+## TODO: Document
+.beta <- function(x){
+  val <- x[['M']] / (x[['M']] + x[['U']])
+  
+  return(val)
+}
+
+## TODO: Document
+.zeta <- function(x, m){
+  ## Count how many methylated bases in the m-tuple
+  ## From http://stackoverflow.com/a/12427831
+  nm <- sapply(regmatches(names(x), gregexpr("M", names(x))), length)
+  
+  numerator <- Reduce(f = '+', mapply(FUN = function(nm, x){nm * x}, nm = nm, 
+                                      x = x, SIMPLIFY = FALSE)) 
+  denominator <- m * Reduce(f = '+', x)
+  val <- numerator / denominator
+  
+  return(val)
+}

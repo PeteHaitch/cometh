@@ -29,6 +29,7 @@ Collate:
     'AllClasses.R'
     'AllUtilities.R'
     'RcppExports.R'
+    'betaCor.R'
     'cometh.R'
     'findOverlaps-methods.R'
     'methods-CoMeth-class.R'

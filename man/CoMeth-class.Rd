@@ -2,9 +2,11 @@
 \docType{class}
 \name{CoMeth-class}
 \alias{CoMeth-class}
-\title{An S4 class to represent co-methylation patterns at m-tuples of genomic positions.}
+\title{An S4 class to store co-methylation patterns at m-tuples of genomic
+positions.}
 \description{
-An S4 class to represent co-methylation patterns at m-tuples of genomic positions.
+An S4 class to store co-methylation patterns at m-tuples of genomic
+positions.
 }
 \details{
 The \code{CoMeth} class is based on the
