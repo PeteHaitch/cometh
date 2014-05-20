@@ -196,9 +196,9 @@ test_that("'getPos' works", {
   row.names(pos) <- NULL
   pos <- as.matrix(pos)
   m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
-  expect_that(getPos(m2_s3), is_identical_to(pos))
-  ## NOTE: The above test will fail if positions are not unique across samples
-  ## The below test, which is a bit convoluted, should work.
+  ## NOTE: "expect_that(getPos(m2_s3), is_identical_to(pos))" will fail if 
+  ## positions are not unique across samples
+  ## The below test, which is a bit convoluted, should always work.
   m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
   m2_s3$pos[[2]] <- rbind(m2_s3$pos[[1]][4:10, ], m2_s3$pos[[2]][1:3, ])
   pos <- cbind(as.vector(unlist(m2_s3$seqnames, use.names = FALSE)), as.matrix(unlist(m2_s3$pos)))
