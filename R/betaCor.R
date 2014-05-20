@@ -1,11 +1,11 @@
 #' Compute correlations of pairs of beta-values.
 #' 
-#' Given a \code{\link{CoMethI}} object, \code{betaCor} computes the 
+#' Given a \code{\link{CoMeth1}} object, \code{betaCor} computes the 
 #' correlations of pairs of beta-values. Correlations are computed per-sample 
 #' and are stratified by the \code{ipd} and \code{features} of the pairs of 
 #' methylation loci.
 #' 
-#' @param comethI A CoMethI object.
+#' @param cometh A CoMeth1 object.
 #' @param features The names of features used to stratify the correlations. The
 #' default, \code{features = NULL} means that no features are used. Otherwise, 
 #' \code{features} must be metadata of the m-tuples in the \code{BetaVals} 
@@ -36,8 +36,11 @@
 #' \code{features}, if relevant. Therefore, each row corresponds to the 
 #' correlation for a particular "sample-IPD-features" combination.
 #' 
-betaCor <- function(comethI, methylation_loci_set, features = NULL, 
+betaCor <- function(cometh, methylation_loci_set, features = NULL, 
                     ipd = sort(unique(width(beta_vals))), nil = 0, 
                     method = c("pearson", "kendall", "spearman")){
+  if (!is(cometh, "CoMeth1")){
+    stop(sQuote("cometh"), " must be a ", sQuote("CoMeth1"), " object.")
+  }
   
 }

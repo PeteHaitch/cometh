@@ -3,12 +3,12 @@
 \alias{betaCor}
 \title{Compute correlations of pairs of beta-values.}
 \usage{
-betaCor(comethI, methylation_loci_set, features = NULL,
+betaCor(cometh, methylation_loci_set, features = NULL,
   ipd = sort(unique(width(beta_vals))), nil = 0, method = c("pearson",
   "kendall", "spearman"))
 }
 \arguments{
-\item{comethI}{A CoMethI object.}
+\item{cometh}{A CoMeth1 object.}
 
 \item{features}{The names of features used to stratify the correlations. The
 default, \code{features = NULL} means that no features are used. Otherwise,
@@ -43,7 +43,7 @@ the sample name and the remaining columns are \code{IPD} and
 correlation for a particular "sample-IPD-features" combination.
 }
 \description{
-Given a \code{\link{CoMethI}} object, \code{betaCor} computes the
+Given a \code{\link{CoMeth1}} object, \code{betaCor} computes the
 correlations of pairs of beta-values. Correlations are computed per-sample
 and are stratified by the \code{ipd} and \code{features} of the pairs of
 methylation loci.

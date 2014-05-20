@@ -2,8 +2,6 @@
 ### All classes 
 ### =========================================================================
 
-## TODO: Remove use of class-specific methods
-
 ### -------------------------------------------------------------------------
 ### MTuples 
 ###
@@ -503,3 +501,33 @@ setAs("CoMeth3Plus", "SummarizedExperiment",
         from
       }
 )
+
+### -------------------------------------------------------------------------
+### MethylationLociSet 
+###
+
+.valid.MethylationLociSet.methylation_type <- function(object){
+  
+  msg <- NULL
+  
+  if (!object@methylation_type %in% c('CG', 'CHG', 'CHH', 'CNN', 'CG/CHG', 'CG/CHH', 'CG/CNN', 'CHG/CHH', 'CHG/CNN', 'CHH/CNN', 'CG/CHG/CHH', 'CG/CHG/CNN', 'CHG/CHH/CNN', 'CG/CHG/CHH/CNN')){
+    msg <- validMsg(msg, paste0("Invalid ", sQuote("methylation_type")))
+  }
+  return(msg)
+}
+
+.valid.MethylationLociSet <- function(object){
+  
+  msg <- c(.valid.MethylationLociSet.methylation_type(object)) # Include all other .valid.MethylationLociSet* functions in this vector
+  
+  if (is.null(msg)){
+    return(TRUE)
+  } else{
+    return(msg)
+  }
+}
+
+setClass("MethylationLociSet", 
+         contains = "GRanges",
+         slots = c(methylation_type = "character"),
+         validity = .valid.MethylationLociSet)

@@ -34,3 +34,4 @@ Collate:
     'findOverlaps-methods.R'
     'methods-CoMeth-class.R'
     'methods-MTuples-class.R'
+    'methods-MethylationLociSet-class.R'

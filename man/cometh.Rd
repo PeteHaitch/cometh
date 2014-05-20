@@ -80,13 +80,15 @@ what these might be.}
 coercion during construction should be printed.}
 }
 \value{
-A \code{\link{CoMeth}} object
+A \code{CoMeth1} (if \code{m} \eqn{= 1}), \code{CoMeth2} (if
+\code{m} \eqn{= 2}) or \code{CoMeth3Plus} (if \code{m} \eqn{>= 3}) object.
+All these are concrete subclasses of the VIRTUAL \code{\link{CoMeth}} class.
+
+
+cat("TODO")
 }
 \description{
 This is the general function to construct a \code{CoMeth} object. Users will generally use the \code{\link{read.comethylation}} function to construct a \code{CoMeth} object. The constructor allows for multiple samples in the same object by passing most arguments as a *List where each element of the *List corresponds to the arguments for a given sample. These multiple samples will then be appropriately combined into a single \code{CoMeth} object.
-}
-\examples{
-cat("TODO")
 }
 \seealso{
 \code{\link{read.comethylation}} for a function to read in the
