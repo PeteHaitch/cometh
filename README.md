@@ -1,5 +1,5 @@
 # cometh
-[![Build Status](https://travis-ci.org/PeteHaitch/cometh.png?branch=master)](https://travis-ci.org/PeteHaitch/cometh)
+[![Build Status](https://travis-ci.org/PeteHaitch/cometh.png?branch=CoMeth_VIRTUAL_class)](https://travis-ci.org/PeteHaitch/cometh)
 
 An R package with tools for analysing, managing and visualising co-methylation data. Loosely speaking, co-methylation is the correlation structure of DNA methylation.
 

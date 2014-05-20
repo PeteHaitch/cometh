@@ -158,8 +158,8 @@ test_that("CoMeth validity checking works: '.valid.CoMeth.counts'", {
   expect_that(validObject(m2_s3), throws_error(paste0(sQuote('counts'), " cannot have negative entries.")))
   m2_s3 <- make_test_data(m = 2L, n = 10L, s = 3L, sim_counts = TRUE)
   m2_s3 <- CoMeth(sample_names = m2_s3$sample_names, methylation_type = m2_s3$methylation_type, counts = m2_s3$counts, seqnames = m2_s3$seqnames, pos = m2_s3$pos, seqinfo = m2_s3$seqinfo)
-  names(assays(m2_s3)) <- rev(names(assays(m2_s3)))
-  expect_that(validObject(m2_s3), throws_error(paste0("assay names must be: ", paste0("assay names must be: ", paste0(sQuote(.make_m_tuple_names(2L)), collapse = ', ')), ".")))
+  names(assays(m2_s3)) <- paste0((names(assays(m2_s3))), 'a')
+  expect_that(validObject(m2_s3), throws_error(paste0("assay names must include: ", paste0(sQuote(.make_m_tuple_names(2L)), collapse = ', '), ".")))
 })
 
 test_that("CoMeth validity checking works: '.valid.CoMeth.methylation_type'", {

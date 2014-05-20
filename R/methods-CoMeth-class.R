@@ -56,7 +56,9 @@ setMethod("getM", "CoMeth", function(x) {
 #' @include AllGenerics.R
 #' @export
 setMethod("getCoverage", "CoMeth", function(x) {
-  Reduce("+", assays(x))
+  m <- getM(x)
+  assay_names <- .make_m_tuple_names(m)
+  Reduce("+", assays(x)[assay_names])
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -136,8 +138,11 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #' @seealso \code{\link[GenomicRanges]{SummarizedExperiment}} for the class that
 #' \code{CoMeth} extends.
 #' 
-#' @return A \code{\link{CoMeth}} object
-#' @examples
+#' @return A \code{CoMeth1} (if \code{m} \eqn{= 1}), \code{CoMeth2} (if 
+#' \code{m} \eqn{= 2}) or \code{CoMeth3Plus} (if \code{m} \eqn{>= 3}) object. 
+#' All these are concrete subclasses of the VIRTUAL \code{\link{CoMeth}} class.
+#' 
+#' 
 #' cat("TODO")
 CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterList(), counts = DataFrameList(), seqnames = RleList(), pos = DataFrameList(), seqinfo = Seqinfo(), strand = RleList(), colData = DataFrame(), exptData = SimpleList(), ..., verbose = FALSE){
   
@@ -297,14 +302,17 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
   ## Construct CoMeth object
   if (m == 1L){
     assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), beta = list(.beta(combined_data$counts)))
-    class <- "CoMethI"
+    class <- "CoMeth1"
   } else if (m == 2L){
-    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), zeta = list(.zeta(combined_data$counts, m)))
-    class <- "CoMethII"
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), LOR = list(.LOR(combined_data$counts, m)))
+    class <- "CoMeth2"
   } else{
-    class <- "CoMethIII"
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)))
+    class <- "CoMeth3Plus"
   }
-  new(class, SummarizedExperiment(assays = combined_data$counts, rowData = mtuples, colData = colData, exptData = exptData, verbose = verbose))
+  new(class, SummarizedExperiment(assays = assays, rowData = mtuples, 
+                                  colData = colData, exptData = exptData, 
+                                  verbose = verbose))
   
 }
 
@@ -354,16 +362,18 @@ setMethod("cbind", "CoMeth", function(..., deparse.level = 1){
   sample_names <- as(unlist(lapply(args, sampleNames)), "CharacterList")
   methylation_type <- as(unlist(lapply(args, getMethylationType)), "CharacterList")
   names(methylation_type) <- sample_names
-  counts <- DataFrameList(unlist(lapply(args, function(x){
-    lapply(sampleNames(x), function(sn, x){
-      val <- sapply(seq_len(length(assays(x))), function(i, sn, x){
-        assay(x, i)[, sn]
+  counts <- DataFrameList(unlist(lapply(args, function(x, m){
+    lapply(sampleNames(x), function(sn, x, m){
+      #val <- sapply(seq_len(length(assays(x))), function(i, sn, x){
+      val <- sapply(.make_m_tuple_names(m), function(an, sn, x){
+        #assay(x, i)[, sn]
+        assay(x, an)[, sn]
         }, sn = sn, x = x)
       colnames(val) <- .make_m_tuple_names(m)
       val <- DataFrame(val)
       return(val)}, 
-      x = x)
-  })))
+      x = x, m = m)
+  }, m = m)))
   names(counts) <- sample_names
   seqnames <- RleList(unlist(lapply(args, function(x){replicate(n = ncol(x), seqnames(x))})))
   names(seqnames) <- sample_names
@@ -434,7 +444,17 @@ setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
   }, args = args))
   names(assays) <- names(assays(args[[1]]))
   exptData <- do.call(what = "c", args = lapply(args, exptData))
-  new("CoMeth", SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
+  
+  ## Don't call the CoMeth constructor but because there's no need to "combine"
+  ## data, just need to initialise the class.
+  if (m == 1L){
+    class <- "CoMeth1"
+  } else if (m == 2L){
+    class <- "CoMeth2"
+  } else{
+    class <- "CoMeth3Plus"
+  }
+  new(class, SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
 })
 
 ## combine tries to figure out the combination of cbind and rbind that will automatically combine the CoMeth objects into a single CoMeth object.

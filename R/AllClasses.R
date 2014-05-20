@@ -111,8 +111,8 @@ setClass('MTuples',
 ### -------------------------------------------------------------------------
 ### CoMeth 
 ###
-### CoMeth is a VIRTUAL class with concrete subclasses CoMethI (for 1-tuples),
-### CoMethII (for 2-tuples) and CoMethIII (for m-tuples, m >= 3).
+### CoMeth is a VIRTUAL class with concrete subclasses CoMeth1 (for 1-tuples),
+### CoMeth2 (for 2-tuples) and CoMeth3Plus (for m-tuples, m >= 3).
 
 .valid.CoMeth.rowData <- function(object){
   
@@ -141,6 +141,33 @@ setClass('MTuples',
   return(msg)
 }
 
+.valid.CoMeth.assayNames <- function(object){
+  
+  msg <- NULL
+  
+  # Get m
+    if (isTRUE(all(is.na(object@rowData@extraPos)))){
+      # m = 1 or 2
+      if (isTRUE(all(object@rowData@ranges@start == 
+                       (object@rowData@ranges@start 
+                        + object@rowData@ranges@width - 1L)))){
+        m <- 1L
+      } else{
+        m <- 2L
+      }
+    } else{
+      # m > 2
+      m <- ncol(object@rowData@extraPos) + 2L
+    }
+  
+  # Check that object has 'MM..M', ..., 'UU..U', and 'EP' assays names
+  if (!all(c(.make_m_tuple_names(m), "EP") %in% names(object@assays$data))){
+    msg <- validMsg(msg, paste0("assay names must include: ", 
+                                paste0(sQuote(c(.make_m_tuple_names(m), "EP")), 
+                                       collapse = ", "), "."))
+  }
+}
+
 .valid.CoMeth.noDuplicates <- function(object){
   
   msg <- NULL
@@ -149,6 +176,23 @@ setClass('MTuples',
   if (any(duplicated(object))){
     msg <- validMsg(msg, paste0(sQuote('CoMeth'), " object cannot contain duplicate m-tuples."))
   }
+  
+  return(msg)
+}
+
+.valid.CoMeth.counts <- function(object){
+  
+  msg <- NULL
+  
+  m <- getM(rowData(object))
+  assay_names <- .make_m_tuple_names(m)
+  
+  ## Check that all 'counts' are non-negative
+  ## Note from bsseq: benchmarking shows that min(assay()) < 0 is faster than any(assay() < 0) if it is false
+  if (min(sapply(object@assays$data[assay_names], min, na.rm = TRUE), na.rm = TRUE) < 0) {
+    msg <- validMsg(msg, paste0(sQuote('counts'), " cannot have negative entries."))
+  }
+  
   return(msg)
 }
 
@@ -158,7 +202,13 @@ setClass('MTuples',
   # Otherwise some of the .valid.CoMeth.* functions won't work
   msg <- .valid.CoMeth.rowData(object)
   if (is.null(msg)){
-    msg <- c(.valid.CoMeth.methylation_type(object), .valid.CoMeth.noDuplicates(object)) # Include all other .valid.CoMeth.* functions in this vector
+    msg <- c(.valid.CoMeth.methylation_type(object), 
+             .valid.CoMeth.noDuplicates(object),
+             .valid.CoMeth.assayNames(object)) # Include all other .valid.CoMeth.* functions in this vector
+  }
+  ## Can't run this check unless the assayNames are correct
+  if (is.null(msg)){
+    msg <- .valid.CoMeth.counts(object)
   }
   if (is.null(msg)){
     return(TRUE)
@@ -213,50 +263,61 @@ setClass('CoMeth',
          validity = .valid.CoMeth)
 
 
-#### TODO: Define oncrete subclasses of CoMeth
+#### TODO: Define concrete subclasses of CoMeth
 # The current ones (below) aren't quite correct.
-# CoMethI: 1-tuples
-# CoMethII: 2-tuples
-# CoMethIIIPlus: m-tuples, m >= 3
+# CoMeth1: 1-tuples
+# CoMeth2: 2-tuples
+# CoMeth3Plus: m-tuples, m >= 3
 
-# CoMeth should have 'counts' and 'ep' as an assay 
-# CoMethI should also have 'beta' as an assay
-# CoMethII should also have "lor" as an assay
-# CoMethIIIPlus doesn't need any extra assays
+# CoMeth should have 'MM..M', ..., 'UU..U' and 'EP' assays (not enforced)
+# CoMeth1 should have 'M', 'U', 'EP' and 'beta' as an assay 
+# CoMeth2 should also have 'LOR' as an assay.
+# CoMeth3Plus doesn't need any extra assays.
 # User could extend CoMeth VIRTUAL class, for specific m-tuples,
-# e.g. CoMethVII for 7-tuples.
+# e.g. CoMeth7 for 7-tuples, which might include an additional (and, as yet, 
+# unknown) assay that is specific to 7-tuples.
 
-# What about zeta? Where should it go? Well, it depends. Is zeta the average
-# methylation level of reads containing an m-tuple or the average of the beta
-# values for that m-tuple? They are only equivalent if all reads covering any
-# loci in the m-tuple cover all loci in the m-tuple.
+# TODO: Move EP to CoMeth VIRTUAL class
+
+# What about zeta? Where should it go? Well, it depends. 
+# zeta is the average level of methylation for all reads that overlap all 
+# methylation loci in the m-tuple. __This is generally not equivalent to the 
+# average beta values of the m-tuple__.
+# __Because of this, I will not include this as part of the CoMeth VIRTUAL class
+# or any of its concrete subclasses__
 
 ### -------------------------------------------------------------------------
-### CoMethI
+### CoMeth1
 ###
 ### A concrete subclass of CoMeth for storing methylation patterns at 1-tuples.
 
-.valid.CoMethI.counts <- function(object){
+.valid.CoMeth1.counts <- function(object){
   
   msg <- NULL
   
   ## Check that contains 1-tuples
-  if (!isTRUE(all(is.na(object@rowData@ranges@start))) || isTRUE(any(object@rowData@ranges@start != (object@rowData@ranges@start + object@rowData@ranges@width - 1L)))){
-    msg <- validMsg(msg, paste0("Expected 1-tuples in a ", sQuote("CoMethI"), " object."))
-  } else{
-    m <- 1L
-    ## Check assay names
-  if (!identical(names(object@assays$data@listData), c(.make_m_tuple_names(m), "EP", "beta"))){
-      msg <- validMsg(msg, paste0("assay names must be: ", paste0(sQuote(c(.make_m_tuple_names(m), "EP", "beta")), collapse = ", "), "."))
-    }
-  ## TODO: check that 'counts' assays are positive
+  if (getM(rowData(object)) != 1L){
+    msg <- validMsg(msg, paste0("Expected 1-tuples in a ", sQuote("CoMeth1"), " object."))
+  } 
+
+  ## Check assay names 
+  ## M, U and EP are already checked by validity method for CoMeth 
+  ## VIRTUAL class
+  assay_names <- names(object@assays$data@listData)
+  extra_assay_names <- assay_names[-which(assay_names %in% c('M', 'U', 'EP'))] 
+  if (!extra_assay_names %in% "beta"){
+    msg <- validMsg(msg, 
+                    paste0(sQuote("CoMeth1"), 
+                           " object must include assay: ", 
+                           sQuote("beta")))
   }
+    
   return(msg)
 }
 
-.valid.CoMethI <- function(object){
+.valid.CoMeth1 <- function(object){
   
-  msg <- c(.valid.CoMeth(object), .valid.CoMethI.counts(object)) # Include all other .valid.CoMethI.* functions in this vector
+  msg <- c(.valid.CoMeth(object), .valid.CoMeth1.counts(object)) # Include all other .valid.CoMeth1.* functions in this vector
   
   if (is.null(msg)){
     return(TRUE)
@@ -265,9 +326,9 @@ setClass('CoMeth',
   }
 }
 
-setClass("CoMethI", 
+setClass("CoMeth1", 
          contains = "CoMeth",
-         validity = .valid.CoMethI)
+         validity = .valid.CoMeth1)
 
 ### Coercion:
 ### Recursion problem in an automatically generated coerce method requires
@@ -275,9 +336,8 @@ setClass("CoMethI",
 ### (Source: https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/VariantAnnotation/R/AllClasses.R)
 ### See also https://stat.ethz.ch/pipermail/r-devel/2012-October/065028.html
 
-setAs("CoMethI", "SummarizedExperiment",
-      def = function(from)
-      {
+setAs("CoMeth1", "SummarizedExperiment",
+      def = function(from){
         if (strict) {
           force(from)
           class(from) <- "SummarizedExperiment"
@@ -301,31 +361,39 @@ setAs("CoMethI", "SummarizedExperiment",
 )
 
 ### -------------------------------------------------------------------------
-### CoMethII
+### CoMeth2
 ###
 ### A concrete subclass of CoMeth for storing methylation patterns at 2-tuples.
 
-.valid.CoMethII.counts <- function(object){
+.valid.CoMeth2.counts <- function(object){
   
   msg <- NULL
   
-  ## Check that contains 1-tuples
-  if (!isTRUE(all(is.na(object@rowData@ranges@start))) || isTRUE(any(object@rowData@ranges@start == (object@rowData@ranges@start + object@rowData@ranges@width - 1L)))){
-    msg <- validMsg(msg, paste0("Expected 2-tuples in a ", sQuote("CoMethII"), " object."))
-  } else{
-    m <- 2L
-    ## Check assay names
-    if (!identical(names(object@assays$data@listData), c(.make_m_tuple_names(m), "EP", "zeta"))){
-      msg <- validMsg(msg, paste0("assay names must be: ", paste0(sQuote(c(.make_m_tuple_names(m), "EP", "zeta")), collapse = ", "), "."))
-    }
-    ## TODO: check that 'counts' assays are positive
+  ## Check that contains 2-tuples
+  if (getM(rowData(object)) != 2L){
+    msg <- validMsg(msg, paste0("Expected 2-tuples in a ", sQuote("CoMeth2"), " object."))
+  } 
+  
+  ## Check assay names 
+  ## MM, MU, UM, UU and EP are already checked by validity method for CoMeth 
+  ## VIRTUAL class
+  assay_names <- names(object@assays$data@listData)
+  extra_assay_names <- assay_names[-which(assay_names %in% 
+                                            c('MM', 'MU', 'UM', 'UU', 'EP'))] 
+  if (!extra_assay_names %in% "LOR"){
+    msg <- validMsg(msg, 
+                    paste0(sQuote("CoMeth2"), 
+                           " object must include assay: ", 
+                           sQuote("LOR")))
   }
+    
   return(msg)
 }
 
-.valid.CoMethII <- function(object){
+.valid.CoMeth2 <- function(object){
   
-  msg <- c(.valid.CoMeth(object), .valid.CoMethII.counts(object)) # Include all other .valid.CoMethII.* functions in this vector
+  msg <- c(.valid.CoMeth(object), 
+           .valid.CoMeth2.counts(object)) # Include all other .valid.CoMeth2.* functions in this vector
   
   if (is.null(msg)){
     return(TRUE)
@@ -334,9 +402,9 @@ setAs("CoMethI", "SummarizedExperiment",
   }
 }
 
-setClass("CoMethII", 
+setClass("CoMeth2", 
          contains = "CoMeth",
-         validity = .valid.CoMethII)
+         validity = .valid.CoMeth2)
 
 ### Coercion:
 ### Recursion problem in an automatically generated coerce method requires
@@ -344,9 +412,76 @@ setClass("CoMethII",
 ### (Source: https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/VariantAnnotation/R/AllClasses.R)
 ### See also https://stat.ethz.ch/pipermail/r-devel/2012-October/065028.html
 
-setAs("CoMethII", "SummarizedExperiment",
-      def = function(from)
+setAs("CoMeth2", "SummarizedExperiment",
+      def = function(from){
+        if (strict) {
+          force(from)
+          class(from) <- "SummarizedExperiment"
+        }
+        from
+      },
+      replace = function(from, to, value)
       {
+        firstTime <- TRUE
+        for (nm in slotNames(value)) {
+          v <- slot(value, nm)
+          if (firstTime) {
+            slot(from, nm, FALSE) <- v
+            firstTime <- FALSE
+          } else {
+            `slot<-`(from, nm, FALSE, v)
+          }
+        }
+        from
+      }
+)
+
+### -------------------------------------------------------------------------
+### CoMeth3Plus
+###
+### A concrete subclass of CoMeth for storing methylation patterns at m-tuples,
+### when m >= 3.
+
+.valid.CoMeth3Plus.counts <- function(object){
+  
+  msg <- NULL
+  
+  ## Check that contains m-tuples, with m >= 3
+  if (getM(rowData(object)) < 3L){
+    msg <- validMsg(msg, paste0("Expected m-tuples (m >= 3) in a ", 
+                                sQuote("CoMeth3Plus"), " object."))
+  } 
+  
+  ## Compulsory assay names already checked by validity method for CoMeth 
+  ## VIRTUAL class
+    
+  return(msg)
+}
+
+.valid.CoMeth3Plus <- function(object){
+  
+  msg <- c(.valid.CoMeth(object), 
+           .valid.CoMeth3Plus.counts(object)) # Include all other .valid.CoMeth3Plus.* functions in this vector
+  
+  if (is.null(msg)){
+    return(TRUE)
+  } else{
+    return(msg)
+  }
+}
+
+setClass("CoMeth3Plus", 
+         contains = "CoMeth",
+         validity = .valid.CoMeth3Plus)
+
+### Coercion:
+### Recursion problem in an automatically generated coerce method requires
+### that we handle coercion from subclasses to SummarizedExperiment.
+### (Source: https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/VariantAnnotation/R/AllClasses.R)
+### See also https://stat.ethz.ch/pipermail/r-devel/2012-October/065028.html
+
+setAs("CoMeth3Plus", "SummarizedExperiment",
+      def = function(from){
         if (strict) {
           force(from)
           class(from) <- "SummarizedExperiment"

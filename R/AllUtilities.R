@@ -171,6 +171,21 @@
 }
 
 ## TODO: Document
+#' Compute a log odds ratio
+#' 
+#' Uses base-2 logarithms.
+#' The default offset, which is used to avoid zero-counts, is 0.5.
+.LOR <- function(x, offset = 0.5){
+  lor <- log2(x[['MM']] + offset) + log2(x[['UU']] + offset) 
+         - log2(x[['MU']] + offset) - log2(x[['UM']] + offset)
+  return(lor)
+}
+
+## TODO: Document
+#' Compute the average methylation level (zeta) of an m-tuple
+#' 
+#' Definition based on Landan et al. (2012). zeta differs from mean(beta) 
+#' becuase it only uses reads containing all methylation loci in the m-tuple.
 .zeta <- function(x, m){
   ## Count how many methylated bases in the m-tuple
   ## From http://stackoverflow.com/a/12427831
