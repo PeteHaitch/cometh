@@ -10,12 +10,15 @@
 #' Check whether all elements of a numeric vector are identical (within machine precision)
 #' @param x a numeric vector.
 # 
-#' @return TRUE if all elements of the vector are identical (within machine precision). FALSE in all other cases, including if the vector contains any NAs
+#' @return TRUE if all elements of the vector are identical (within machine 
+#' precision). FALSE in all other cases, including if the vector contains any 
+#' NAs.
 #' 
 #' @export
 #' @keywords internal
 #' 
-#' @note This function is based on Hadley and John's answer to http://stackoverflow.com/questions/4752275/test-for-equality-among-all-elements-of-a-single-vector
+#' @note This function is based on Hadley and John's answer to 
+#' http://stackoverflow.com/q/4752275
 .zero_range <- function(x, tol = .Machine$double.eps ^ 0.5) {
   if (length(x) == 1) {
     val <- TRUE
