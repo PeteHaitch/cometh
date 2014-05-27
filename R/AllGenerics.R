@@ -58,15 +58,3 @@ setGeneric("getM", function(x, ...) {
 setGeneric("getMethylationType",function(x, ...) { 
   standardGeneric("getMethylationType")
 })
-
-### -------------------------------------------------------------------------
-### anyDuplicated
-###
-
-## TODO: This doesn't seem to be working correctly
-## Get "Creating a new generic function for ‘anyDuplicated’ in package ‘cometh’"
-## when building package.
-#' @export
-setGeneric("anyDuplicated", function(x, incomparables = FALSE, ...){
-  standardGeneric("anyDuplicated")
-})

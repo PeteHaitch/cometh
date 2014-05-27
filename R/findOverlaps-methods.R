@@ -3,6 +3,7 @@
 ###
 
 ## TODO: Replace .local() within setMethod calls with a separate (better named) function and then call that function from setMethod
+## TODO: What happens if findOverlaps (type = 'equal') with m-tuples (m > 2) when positions are identical but strands differ, e.g. '+' vs. '+' (should be a match) or '+' vs. '-' (should not be a match).
 
 ## AWAITING RESPONSE FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005549.html) THAT IS RELEVANT TO THESE METHOD DEFINITIONS
 ## REPLY FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html): Can remove this method once I have updated to GenomicRanges >= 1.15.46 (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html).

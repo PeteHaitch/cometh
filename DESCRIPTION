@@ -19,10 +19,11 @@ Imports:
     Rcpp,
     GenomicRanges,
     IRanges,
-    Biobase
+    Biobase,
+    BSgenome
 Suggests:
     testthat,
-    knitr
+    knitr,
 LinkingTo: Rcpp
 Collate:
     'AllGenerics.R'
@@ -32,6 +33,7 @@ Collate:
     'betaCor.R'
     'cometh.R'
     'findOverlaps-methods.R'
+    'fread.comethylation.R'
     'methods-CoMeth-class.R'
     'methods-MTuples-class.R'
     'methods-MethylationLociSet-class.R'

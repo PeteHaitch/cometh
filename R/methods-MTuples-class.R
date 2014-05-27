@@ -194,15 +194,15 @@ setMethod("getIPD", "MTuples", function(x){
   return(val)
 }
 
-setMethod("compare", c("MTuples", "MTuples"), function(x, y){
+setMethod("compare", c("MTuples", "MTuples"), function(x, y) {
   .MTuples.compare(x, y)
 })
 
-setMethod("<=", c("MTuples", "MTuples"), function(e1, e2){
+setMethod("<=", c("MTuples", "MTuples"), function(e1, e2) {
   .MTuples.compare(e1, e2) <= 0L
 })
 
-setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
+setMethod("==", c("MTuples", "MTuples"), function(e1, e2) {
   .MTuples.compare(e1, e2) == 0L
 })
 

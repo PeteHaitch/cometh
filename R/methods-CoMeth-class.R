@@ -162,7 +162,6 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
   if (missing(pos)){
     stop(sQuote('pos'), " missing. Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
-
   if (missing(seqinfo)){
     stop(sQuote('seqinfo'), " missing. Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -454,6 +453,9 @@ setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
   } else{
     class <- "CoMeth3Plus"
   }
+  
+  ## TODO: REMOVE print statement
+  print("Trying to creating class...")
   new(class, SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
 })
 
@@ -534,7 +536,7 @@ setMethod(order, "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
 #'
 #' @param files The \code{.tsv} files created by \code{comethylation}. These files may be compressed with gzip or bzip2.
 #' @param sample_names The sample names of each file.
-#' @param methylation_types A character vector with the type of methylation of each file.
+#' @param methylation_types A character vector with the type of methylation type of each file.
 #' @param quiet logical: if \code{FALSE} (default), \code{read.comethylation()} will print a line, saying how many items (m-tuples) have been read per file.
 #' @param seqinfo A \code{\link[GenomicRanges]{Seqinfo}} object containing information about the reference genome of the sample.
 #' @note The compression of \code{file} is determined by the file extension: \code{.gz} for compressed with gzip and \code{.bz2} for compressed with bzip2. Otherwise the file is assumed to be uncompressed.

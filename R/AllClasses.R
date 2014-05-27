@@ -128,6 +128,10 @@ setClass('MTuples',
 ### e.g. CoMeth7 for 7-tuples, which might include an additional (and, as yet, 
 ### unknown) assay that is specific to 7-tuples.
 
+## TODO: The use of a VIRTUAL class for CoMeth seems to make memory usage 
+## increase dramatically. Or is it using data.table or R.utils that causes this?
+## Will need to test on a machine with more memory than my laptop.
+
 .valid.CoMeth.rowData <- function(object) {
   
   msg <- NULL
@@ -153,14 +157,12 @@ setClass('MTuples',
   # Can only run the next check if colData contains the 'methylation_type' 
   # column
   if (is.null(msg)){
-    valid_meth_types <- c('CG', 'CHG', 'CHH', 'CNN', 'CG/CHG', 'CG/CHH', 
-                          'CG/CNN', 'CHG/CHH', 'CHG/CNN', 'CHH/CNN', 
-                          'CG/CHG/CHH', 'CG/CHG/CNN', 'CHG/CHH/CNN', 
-                          'CG/CHG/CHH/CNN')
-    if (!all(
-      object@colData[, grepl("^methylation_type$", 
-                             colnames(object@colData))] %in% valid_methy_types){
-      msg <- validMsg(msg, 
+    
+    mts <- object@colData[, grepl("^methylation_type$", 
+                                  colnames(object@colData))]
+    
+    if (!all(sapply(X = mts, FUN = .valid_methylation_type))){
+      msg <- validMsg(msg,
                       paste0(sQuote('methylation_type'), 
                              " for each sample must be ", sQuote('CG'), ", ",
                              sQuote('CHG'), ", ", sQuote('CHH'), " or ", 
@@ -536,10 +538,7 @@ setAs("CoMeth3Plus", "SummarizedExperiment",
   
   msg <- NULL
   
-  valid_meth_types <- c('CG', 'CHG', 'CHH', 'CNN', 'CG/CHG', 'CG/CHH', 'CG/CNN',
-                        'CHG/CHH', 'CHG/CNN', 'CHH/CNN', 'CG/CHG/CHH', 
-                        'CG/CHG/CNN', 'CHG/CHH/CNN', 'CG/CHG/CHH/CNN')
-  if (!object@methylation_type %in% valid_meth_types){
+  if (!all(sapply(X = object@methylation_type, .valid_methylation_type))){
     msg <- validMsg(msg, paste0("Invalid ", sQuote("methylation_type")))
   }
   return(msg)

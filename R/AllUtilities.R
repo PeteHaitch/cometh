@@ -157,6 +157,8 @@
 
 ## TODO: Document
 ## TOOD: Test
+#' @export
+#' @keywords internal
 .EP <- function(x){
   p <- lapply(X = x, FUN = function(xx, y){
     xx / y
@@ -167,6 +169,8 @@
 }
 
 ## TODO: Document
+#' @export
+#' @keywords internal
 .beta <- function(x){
   val <- x[['M']] / (x[['M']] + x[['U']])
   
@@ -200,4 +204,71 @@
   val <- numerator / denominator
   
   return(val)
+}
+
+#' Return the valid methylation types
+#' 
+#' @param methylation_type A character.
+#' @export
+#' @keywords internal
+#' @return Returns \code{TRUE} if a valid methylation type, otherwise 
+#' \code{FALSE}.
+.valid_methylation_type <- function(methylation_type) {
+  valid_methylation_types <- c('CG', 'CHG', 'CHH', 'CNN', 'CG/CHG', 'CG/CHH', 
+                               'CG/CNN', 'CHG/CHH',  'CHG/CNN', 'CHH/CNN', 
+                               'CG/CHG/CHH', 'CG/CHG/CNN', 'CHG/CHH/CNN', 
+                               'CG/CHG/CHH/CNN')
+  val <- methylation_type %in% valid_methylation_types
+  
+  return(val)
+}
+
+## TODO: This currently breaks when strand == '-'.
+## See email to Bioc-Devel https://stat.ethz.ch/pipermail/bioc-devel/2014-May/005820.html
+#' A helper function used by \code{\link{makeMLS}}.
+#'
+#' \code{\link{makeMLS}} uses \code{\link[BSgenome]{bsapply}} to apply 
+#' \code{\link[Biostrings]{matchPDict}} to all chromosomes of a 
+#' \code{\link[BSgenome]{bsgenome}} object. This returns a list of 
+#' \code{\link[IRanges]{IRanges}} that must then be converted to 
+#' \code{\link[GenomicRanges]{GRanges}}. This helper function does that.
+#' 
+#' @param irl A list of \code{\link[IRanges]{IRanges}} objects.
+#' @param strand A character vector of length 1. The strand of all methylation 
+#' loci in \code{irl}.
+#' @param seqinfo The \code{\link[GenomicRanges]{Seqinfo}} of all methylation 
+#' loci in \code{irl}.
+#' 
+#' @param Note, \code{.irl2gr} differs from calling 
+#' \code{as(IRangesList(irl), "GRanges")}, where \code{irl} is a list of 
+#' \code{\link[IRanges]{IRanges}} objects. Specifically, it requires the user 
+#' to specify the strand rather than simply setting it to \code{*}, it makes 
+#' all ranges of width = 1, with the start being the cytosine in the relevant 
+#' strand, and it requires the user to specify the 
+#' \code{\link[GenomicRanges]{Seqinfo}}.
+#' @export
+#' 
+.irl2gr <- function(irl, strand, seqinfo) {
+  
+  if (!is(seqinfo, "Seqinfo")){
+    stop(sQuote('seqinfo'), " must be a ", sQuote("Seqinfo"), " object.")
+  }
+  
+  # NOTE: Need to unname irl otherwise do.call returns a list (which is not 
+  # what I expected nor wanted). 
+  if (strand == '+') {
+    GRanges(seqnames = Rle(names(irl), sapply(irl, length)), 
+            ranges = resize(do.call("c", unname(unlist(irl))), width = 1, 
+                            fix = 'start'), 
+            strand = strand,
+            seqinfo = seqinfo)
+  } else if (strand == '-') {
+    GRanges(seqnames = Rle(names(irl), sapply(irl, length)), 
+            ranges = resize(do.call("c", unname(unlist(irl))), width = 1, 
+                            fix = 'end'),
+            strand = strand,
+            seqinfo = seqinfo)
+  } else {
+    stop("Unexpected ", sQuote('strand'))
+  }
 }

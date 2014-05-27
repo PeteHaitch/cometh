@@ -11,7 +11,7 @@ read.comethylation(files, sample_names, methylation_types, seqinfo,
 
 \item{sample_names}{The sample names of each file.}
 
-\item{methylation_types}{A character vector with the type of methylation of each file.}
+\item{methylation_types}{A character vector with the type of methylation type of each file.}
 
 \item{quiet}{logical: if \code{FALSE} (default), \code{read.comethylation()} will print a line, saying how many items (m-tuples) have been read per file.}
 

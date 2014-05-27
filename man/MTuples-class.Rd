@@ -7,12 +7,12 @@
 An S4 class to represent m-tuples of genomic positions.
 }
 \details{
-The \code{MTuples} class extends the \code{\link[GenomicRanges]{GRanges}} class by adding
-the \code{extraPos} slot (see below for details). An m-tuple is a tuple of
-individual basepairs that are on the same chromosome, where 'm' is the number
-of positions in the tuple. For example, (chr1:30, chr1:33, chr1:40) is
-a 3-tuple of the positions on chromosome 1. Note the strand of the m-tuple
-is optional.
+The \code{MTuples} class extends the \code{\link[GenomicRanges]{GRanges}}
+class by adding the \code{extraPos} slot (see below for details). An m-tuple
+is a tuple of individual basepairs that are on the same chromosome, where
+'m' is the number of positions in the tuple. For example,
+(chr1:30, chr1:33, chr1:40) is a 3-tuple of the positions on chromosome 1.
+Note the strand of the m-tuple is optional.
 
 Internally, this example 3-tuple is stored as a GRanges object with the first
 and last positions of the m-tuple stored as the \code{start} and \code{end}
