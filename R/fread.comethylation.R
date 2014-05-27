@@ -5,6 +5,9 @@
 #' Uses \code{data.table::fread} for faster reading of \code{comethylation} 
 #' \code{.tsv} output files. See https://github.com/PeteHaitch/cometh/issues/18 
 #' for benchmarking and a discussion of pros and cons of this approach.
+#' Currently uses R.utils::gunzip to handle gzip files and gunzip-s these to 
+#' a temporary directory, which is created by tempdir().
+#' 
 #' @keywords internal
 fread.comethylation <- function(files, sample_names, methylation_types, seqinfo,
                                 verbose = FALSE) {
@@ -17,7 +20,7 @@ fread.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   # Read in each file and store in a list
   x <- lapply(files, function(file, verbose){
     if (grepl("\\.gz$", file)){
-      file <- gunzip(file, temporary = TRUE)
+      file <- gunzip(file, temporary = TRUE, remove = FALSE)
     } else if (grepl("\\.bz2$", file)){
       stop("Sorry, can't handle ", sQuote('bzip2'), " compressed files.")
     } else {

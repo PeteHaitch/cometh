@@ -10,6 +10,8 @@ fread.comethylation(files, sample_names, methylation_types, seqinfo,
 Uses \code{data.table::fread} for faster reading of \code{comethylation}
 \code{.tsv} output files. See https://github.com/PeteHaitch/cometh/issues/18
 for benchmarking and a discussion of pros and cons of this approach.
+Currently uses R.utils::gunzip to handle gzip files and gunzip-s these to
+a temporary directory, which is created by tempdir().
 }
 \keyword{internal}
 

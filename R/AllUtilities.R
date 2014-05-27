@@ -178,17 +178,21 @@
 }
 
 ## TODO: Document
+## TODO: Tests
 #' Compute a log odds ratio
 #' 
 #' Uses base-2 logarithms.
 #' The default offset, which is used to avoid zero-counts, is 0.5.
 .LOR <- function(x, offset = 0.5){
-  lor <- log2(x[['MM']] + offset) + log2(x[['UU']] + offset) 
-         - log2(x[['MU']] + offset) - log2(x[['UM']] + offset)
+  # NOTE: Without the outer brackets the newline character is parsed and only 
+  # the numerator is evaluated when computing LOR(!)
+  lor <- (log2(x[['MM']] + offset) + log2(x[['UU']] + offset)
+          - log2(x[['MU']] + offset) - log2(x[['UM']] + offset))
   return(lor)
 }
 
 ## TODO: Document
+## TODO: Tests
 #' Compute the average methylation level (zeta) of an m-tuple
 #' 
 #' Definition based on Landan et al. (2012). zeta differs from mean(beta) 
@@ -206,6 +210,7 @@
   return(val)
 }
 
+## TODO: Tests
 #' Return the valid methylation types
 #' 
 #' @param methylation_type A character.
