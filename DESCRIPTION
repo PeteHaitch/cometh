@@ -16,11 +16,13 @@ biocViews: DNAMethylation
 VignetteBuilder: knitr
 Imports:
     methods,
-    Rcpp,
-    GenomicRanges,
-    IRanges,
     Biobase,
-    BSgenome
+    S4Vectors,
+    GenomeInfoDb,
+    IRanges,
+    GenomicRanges,
+    BSgenome,
+    Rcpp
 Suggests:
     testthat,
     knitr,

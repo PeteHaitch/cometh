@@ -379,7 +379,7 @@ test_that("'duplicated' works", {
   m4_s2 <- make_test_data(m = 4L, n = 10L, s = 2L, sim_counts = TRUE)
   m4_s2 <- CoMeth(sample_names = m4_s2$sample_names, methylation_type = m4_s2$methylation_type, counts = m4_s2$counts, seqnames = m4_s2$seqnames, pos = m4_s2$pos, seqinfo = m4_s2$seqinfo)
   start(m4_s2) <- 1
-  end(m4_s2) <- 10
   m4_s2@rowData@extraPos <- matrix(c(rep(3, nrow(m4_s2)), rep(7, nrow(m4_s2))), ncol = 2)
+  end(m4_s2) <- 10
   expect_that(any(duplicated(m4_s2)), is_true())
 })
