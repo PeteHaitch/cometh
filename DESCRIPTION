@@ -18,14 +18,15 @@ Imports:
     methods,
     Biobase,
     S4Vectors,
-    GenomeInfoDb,
     IRanges,
+    GenomeInfoDb,
     GenomicRanges,
-    BSgenome,
     Rcpp
 Suggests:
     testthat,
     knitr,
+    BSgenome.Hsapiens.UCSC.hg19,
+    BSgenome.Celegans.UCSC.ce10
 LinkingTo: Rcpp
 Collate:
     'AllGenerics.R'

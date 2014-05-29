@@ -9,6 +9,6 @@
 #' @docType package
 #' @name cometh
 #' @useDynLib cometh
-#' @import Biobase S4Vectors GenomeInfoDb IRanges GenomicRanges BSgenome Rcpp   
+#' @import Biobase S4Vectors IRanges GenomeInfoDb GenomicRanges Rcpp   
 #' @references TODO
 NULL
