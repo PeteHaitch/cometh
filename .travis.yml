@@ -7,7 +7,7 @@ before_install:
 install:
   - Rscript -e "source('http://bioconductor.org/biocLite.R');
                   biocLite();
-		  useDevel();
+                  useDevel();
                   biocLite(c('Biobase', 'S4Vectors', 'GenomeInfoDb', 'IRanges', 'GenomicRanges', 'BSgenome'))"
   
   - ./travis-tool.sh install_deps
