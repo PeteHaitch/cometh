@@ -411,7 +411,7 @@ setMethod(sort, "MTuples", function(x, decreasing = FALSE, ignore.strand = FALSE
 ### Show
 ###
 
-## Ensure the extraPos column "sticks" during subsetting, etc.
+# Ensure the extraPos column "sticks" during subsetting, etc.
 setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
           function(x) {
             c("extraPos")

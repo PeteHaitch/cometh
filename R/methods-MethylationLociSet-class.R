@@ -60,7 +60,7 @@ MethylationLociSet <- function(seqnames = Rle(), ranges = IRanges(),
   }
   # Check that methylation_type is valid
   if (!all(sapply(X = methylation_type, .valid_methylation_type))){
-    stop("Invalid ", sQuote('methylation_type.'), 
+    stop("Invalid ", sQuote('methylation_type'), 
          ".\nPlease see the help page for MethylationLociSet, which can ", 
          "accessed by ", "typing ", sQuote("?MethylationLociSet"), 
          " at the R prompt, for further details of this argument.")

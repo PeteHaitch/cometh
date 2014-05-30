@@ -3,31 +3,36 @@
 \alias{betaCor}
 \title{Compute correlations of pairs of beta-values.}
 \usage{
-betaCor(cometh, methylation_loci_set, features = NULL,
-  ipd = sort(unique(width(beta_vals))), nil = 0, method = c("pearson",
-  "kendall", "spearman"))
+betaCor(cometh, mls, ipd, nil = 0L, feature = NA, ignore_strand = FALSE,
+  method = c("pearson", "kendall", "spearman"))
 }
 \arguments{
 \item{cometh}{A CoMeth1 object.}
 
-\item{features}{The names of features used to stratify the correlations. The
-default, \code{features = NULL} means that no features are used. Otherwise,
-\code{features} must be metadata of the m-tuples in the \code{BetaVals}
-object, that is, one-or-more-of \code{colnames(mcols(rowData(BetaVals)))}.}
-
-\item{methylation_loci_set}{A \code{\link{MethylationLociSet}} object
+\item{mls}{A \code{\link{MethylationLociSet}} object
 containing the positions of all methylation loci in the sample. This is
-usually the set of all methylation loci in the reference genome.}
+usually the set of all methylation loci in the reference genome.
+If a \code{\link{MethylationLociSet}} is unavailable, then set to \code{NA},
+in which case \code{betaCor} effectively assumes that \code{cometh} contains
+all potential methylation loci (this is not recommended).}
 
 \item{ipd}{An integer vector of IPDs. Correlations will only be computed
 using pairs with an IPD found in \code{ipd}. The default value,
-\code{sort(unique(width(beta_vals)))}, uses all observed IPDs.
-Setting \code{ipd = 0} will removes the IPD strata (see examples).}
+\code{NULL}, uses all observed IPDs. Setting \code{ipd = 0} will removes the
+IPD strata (see examples).}
 
 \item{nil}{The number of intervening loci allowed in each pair. The default,
 \code{nil = 0}, means that only pairs made of adjacent loci are considered.
 To use all pairs, set \code{nil = Inf} but \emph{this will take a very long
 time (and probably crash) because there are so many combinations}.}
+
+\item{feature}{A character. The name of the feature used to stratify the
+correlations. The default, \code{feature = NA} means that no feature is
+used. Otherwise, \code{feature} must be metadata of the m-tuples in the
+\code{cometh} object, that is, one of \code{colnames(mcols(cometh))}.}
+
+\item{ignore_strand}{logical. Should the strand of the methylation loci be
+ignored (default: \code{FALSE})?}
 
 \item{method}{A character string indicating which correlation coefficient
 is to be computed. One of "pearson" (default), "kendall", or "spearman",

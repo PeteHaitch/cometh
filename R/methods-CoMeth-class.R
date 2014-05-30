@@ -146,7 +146,7 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #' cat("TODO")
 CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterList(), counts = DataFrameList(), seqnames = RleList(), pos = DataFrameList(), seqinfo = Seqinfo(), strand = RleList(), colData = DataFrame(), exptData = SimpleList(), ..., verbose = FALSE){
   
-  ## Check that all required arguments are not missing
+  # Check that all required arguments are not missing
   if (missing(sample_names)){
     stop(sQuote("sample_names"), " missing.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -166,7 +166,7 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
     stop(sQuote('seqinfo'), " missing. Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
 
-  ## Check that all required arguments are of the correct class 
+  # Check that all required arguments are of the correct class 
   if (!is(sample_names, 'CharacterList')){
     stop(sQuote('sample_names'), " must be a ", sQuote('CharacterList'), ". Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -186,12 +186,12 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
     stop(sQuote('seqinfo'), " must be a ", sQuote('Seqinfo'), " object.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
   
-  ## Check that 'sample_names' are unique
+  # Check that 'sample_names' are unique
   if (!identical(unique(unlist(sample_names)), unlist(sample_names))){
     stop("Each element of ", sQuote("sample_names"), " must be unique.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
   
-  ## Check that all required arguments that are *Lists (e.g. RleList, DataFrameList, etc.) have the same names as the 'sample_names'
+  # Check that all required arguments that are *Lists (e.g. RleList, DataFrameList, etc.) have the same names as the 'sample_names'
   if (!setequal(names(methylation_type), unlist(sample_names))){
     stop("Names of ", sQuote('methylation_type'), " must match those in ", sQuote('sample_names'), ".\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -205,7 +205,7 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
     stop("Names of ", sQuote('pos'), " must match those in ", sQuote('sample_names'), ".\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }  
   
-  ## Check that all required arguments have the correct dimensions
+  # Check that all required arguments have the correct dimensions
   if (!.zero_range(ncol(counts)) || !identical(log2(ncol(counts[[1]])), round(log2(ncol(counts[[1]])), 0))){
     stop(sQuote('ncol(counts)'), " must be identical for all elements of ", sQuote('counts'), " and should be a power of 2.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of these arguments.")
   }
@@ -454,8 +454,6 @@ setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
     class <- "CoMeth3Plus"
   }
   
-  ## TODO: REMOVE print statement
-  print("Trying to creating class...")
   new(class, SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
 })
 
@@ -598,7 +596,8 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo, 
 ### Show
 ###
 
-## TODO: Include methylation_type and 'm' when show-ing a CoMeth object
+## TODO: Include methylation_type and 'm' when show-ing a CoMeth object.
+## TODO: Rename "methylation patterns", as "assays" (or something similar).
 
 ## The show method is adapted from that of SummarizedExperiment
 #' @export
