@@ -517,6 +517,9 @@ setMethod(order, "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
   args <- lapply(list(...), rowData)
   do.call("order", c(args, list(na.last = na.last, decreasing = decreasing)))  
 })
+
+## TODO: Add an is.unsorted method.
+## TODO: sort(CoMeth, ignore.strand = TRUE) doesn't seem to be supported.
   
 
 

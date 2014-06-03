@@ -1,4 +1,5 @@
 ## TODO: Add some sort of parallelisation
+## TODO: Should (am) I demean(-ing) the beta values before computing cor?
 
 #' Compute betaCor for general NIL.
 #' 
@@ -84,7 +85,7 @@
                           strand = strand(cometh)[xx])
   ol <- findOverlaps(cometh_vp_gr, mls_vp_gr, type = 'equal')
   
-  # This is a sanity check and isn't required.
+  # This is a sanity check and isn't strictly required.
   # Check that all pairs construced from cometh actually exist in vp_gr.
   sanity_check <- as.logical(countQueryHits(ol))
   stopifnot(all(sanity_check))  

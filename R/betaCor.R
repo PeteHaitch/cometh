@@ -1,18 +1,22 @@
-## TODO: Add parallel-support either via parallel or BiocParallel. Should 
-## parallelisation be by sample or by strata?
-## TODO:  Feature should be a GRanges object; every loci in mls will be checked 
-## whether it is in feature and this will be recorded as metadata of mls.
-## TODO: Add option to specify the minimum number of observations per strata in
-## order to compute a correlation for that strata.
-## TODO: A "special value" of nil should mean that all pairs are used, 
-## regardless of NIL, i.e. a traditional autocorrelation of the beta-values.
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### bestCor: Compute within-sample correlations of beta-values.
+###
+### betaCor defers to specific methods depending on what parameters it is 
+### passed.
+### TODO: Add parallel-support either via parallel or BiocParallel. Should 
+### parallelisation be by sample or by strata?
+### TODO: Add option to specify the minimum number of observations per strata in
+### order to compute a correlation for that strata?
+### TODO: Extend to between-sample correlations of beta-values. This includes 
+### between-sample correlations within each pair of loci and or between pairs of
+### loci with the same feature-strand-IPD ombination (fsipdc).
 
 #' Compute correlations of pairs of beta-values.
 #' 
 #' Given a \code{\link{CoMeth1}} object, \code{betaCor} computes the 
 #' correlations of pairs of beta-values. Correlations are computed per-sample 
-#' and are stratified by the \code{ipd} and \code{features} of the pairs of 
-#' methylation loci.
+#' and are stratified by the \code{strand}, \code{features} and \code{ipd} of 
+#' the pairs of methylation loci.
 #' 
 #' @param cometh A CoMeth1 object.
 #' @param mls A \code{\link{MethylationLociSet}} object 
@@ -22,19 +26,25 @@
 #' in which case \code{betaCor} effectively assumes that \code{cometh} contains 
 #' all potential methylation loci (this is not recommended).
 #' @param ipd An integer vector of IPDs. Correlations will only be computed 
-#' using pairs with an IPD found in \code{ipd}. The default value, 
-#' \code{NULL}, uses all observed IPDs. Setting \code{ipd = 0} will removes the 
-#' IPD strata (see examples).
-#' @param nil The number of intervening loci allowed in each pair. The default, 
-#' \code{nil = 0}, means that only pairs made of adjacent loci are considered. 
-#' To use all pairs, set \code{nil = Inf} but \emph{this will take a very long 
-#' time (and probably crash) because there are so many combinations}.
-#' @param feature A character. The name of the feature used to stratify the 
-#' correlations. The default, \code{feature = NA} means that no feature is 
-#' used. Otherwise, \code{feature} must be metadata of the m-tuples in the 
-#' \code{cometh} object, that is, one of \code{colnames(mcols(cometh))}.
+#' using pairs with an IPD found in \code{ipd}. If \code{ipd} is specified, then
+#' the number of intervening loci (NIL) is ignore. Only one of \code{ipd} or
+#' \code{nil} should be specified.
+#' @param nil The number of intervening loci (NIL) allowed in each pair. The 
+#' default, \code{nil = 0}, means that only pairs made of adjacent loci are 
+#' considered. See the \code{ipd} parameter for information on how to use all 
+#' pairs, regardless of NIL. Only one of \code{ipd} or \code{nil} should be 
+#' specified.
+#' @param feature A \code{GRanges} object. If supplied, the correlations are 
+#' stratified by whether the methylation loci overlap a range in the supplied 
+#' \code{feature}. For example, correlations might be stratified by whether the
+#' loci are from a CGI. The details of this stratification are controlled by the 
+#' \code{same_strand} parameter.
+#' @param same_feature logical. If supplying a \code{feature}, should pairs of
+#' methylation loci be required to be in the same feature (TRUE) or just in the 
+#' same feature class (FALSE). Two loci are in the same feature class if, for 
+#' example, they are both in CGIs but each loci is in a \emph{different} CGI.
 #' @param ignore_strand logical. Should the strand of the methylation loci be 
-#' ignored (default: \code{FALSE})?
+#' ignored (default: \code{FALSE}).
 #' @param method A character string indicating which correlation coefficient 
 #' is to be computed. One of "pearson" (default), "kendall", or "spearman", 
 #' can be abbreviated. \emph{Currently, only "pearson" and "spearman" are 
@@ -50,13 +60,12 @@
 #' \code{features}, if relevant. Therefore, each row corresponds to the 
 #' correlation for a particular "sample-IPD-features" combination.
 #' 
-betaCor <- function(cometh, mls, ipd, nil = 0L, feature = NA, 
+betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
+                    same_feature = FALSE,
                     ignore_strand = FALSE,
                     method = c("pearson", "kendall", "spearman")) {
   
-  ## TODO: More argument checks
-  
-  # Check that all required arguments are not missing
+  # Check that all required arguments are not missing.
   if (missing(cometh)) {
     stop(sQuote("cometh"), " missing.\nPlease see the help page for betaCor, ",
          "which can accessed by typing ", sQuote("?betaCor"), " at the R ",
@@ -67,10 +76,12 @@ betaCor <- function(cometh, mls, ipd, nil = 0L, feature = NA,
          "which can accessed by typing ", sQuote("?betaCor"), " at the R ", 
          "prompt, for further details of this argument.")
   }
-  if (missing(ipd)) {
-    message(sQuote('ipd'), " not specified, so will use all IPDs.")
+  if ((missing(nil) & missing(ipd)) || (!missing(nil) & !missing(ipd))){
+    stop("One, and only one, of ", sQuote("nil"), " and ", sQuote("ipd"), 
+         " should be supplied.\nPlease see the help page for betaCor, ", 
+         "which can accessed by typing ", sQuote("?betaCor"), " at the R ", 
+         "prompt, for further details of these arguments.")
   }
-  
   # Check that all required arguments are of the correct class 
   if (!is(cometh, "CoMeth1")) {
     stop(sQuote("cometh"), " must be a ", sQuote("CoMeth1"), " object.")
@@ -79,56 +90,117 @@ betaCor <- function(cometh, mls, ipd, nil = 0L, feature = NA,
     stop(sQuote("mls"), " must be a ", sQuote("MethylationLociSet"), " object ", 
          "or set as ", sQuote("NA"), " if not available.")
   }
-  
-  ## TODO: Remove? Probably not necessary.
-  # Check that cometh contains the bare minimum number of methylation loci
-  n <- nrow(cometh)
-  if (n < 3){
-    stop("Require at least 3 methylation loci to compute ", sQuote('betaCor'))
+  if (missing(ipd)){
+    if (length(nil) != 1L || !is.numeric(nil) || (nil != floor(nil))) {
+      stop(sQuote("nil"), " must be an integer.")
+    }
+    stop("Sorry, currently only supports computing 'autocorrelations'.", 
+         " Please supply an ", sQuote("ipd"), " instead of an ", sQuote("nil"), 
+         ".")
+  } else if (missing(nil)){
+    if (!is.numeric(ipd)){
+      stop(sQuote('ipd'), " must be an integer vector.")
+    }
   }
-  # Check that cometh and mls are defined for the same reference genome
+  
+  # Check that cometh and mls are defined on compatible reference genomes.
   seqinfo <- try(merge(seqinfo(cometh), seqinfo(mls)), silent = TRUE)
   if (is(seqinfo, "try-error")){
     stop(sQuote("cometh"), " and ", sQuote("mls"), " have incompatible ", 
          sQuote("seqinfo"), ".")
   }
-  # Check that cometh doesn't contain any loci not found in mls
+  
+  # Check that cometh doesn't contain any loci not found in mls.
   if (isTRUE(any(countOverlaps(cometh, mls) == 0L))) {
     stop("All loci in ", sQuote("cometh"), " must also be present in ", 
          sQuote("mls"), ".")
   }
   
-  # Check all non-required arguments
-  if (!missing(ipd)) {
-    if (!is(ipd, "integer")){
-      stop(sQuote('ipd'), " must be a vector of type ", sQuote('integer'), ".")
+  # Check that all non-required arguments, if supplied, are correct.
+  # feature
+  if (!inherits(feature, "GRanges")){
+    stop(sQuote('feature'), " must be a ", sQuote("GRanges"), " object or ", 
+         "inherit from the ", sQuote("GRanges"), " class.")
+  }
+  seqinfo <- try(merge(seqinfo(cometh), seqinfo(feature)), silent = TRUE)
+  if (is(seqinfo, "try-error")){
+    stop(sQuote("cometh"), " and ", sQuote("feature"), " have incompatible ", 
+         sQuote("seqinfo"), ".")
+  }
+  if (!missing(feature)) {
+    if (missing(feature_name)){
+      stop("Please supply a ", sQuote('feature_name'), ".")
     }
-  }
-  if (nil != 0L){
-    stop("Sorry, currently only supports ", sQuote("nil = 0"), ".")
-  }
-  if (all.equal(nil, floor(nil))){
-    stop(sQuote("nil"), " must be an integer.")
-  }
-  if (!(feature %in% names(mcols(cometh)))) {
-    stop(sQuote("feature"), " must match one of ", 
-         sQuote("colnames(mcols(cometh))"), ".")
+    if (!isTRUEorFALSE(same_feature)) {
+      stop(sQuote('same_feature'), " must be ", sQuote("TRUE"), " or ", 
+           sQuote("FALSE"))
+    }
+  if (!isTRUEorFALSE(ignore_strand)) {
+    stop(sQuote('ignore_strand'), " must be ", sQuote("TRUE"), " or ", 
+         sQuote("FALSE"))
   }
   method <- match.arg(method, choices = c("pearson", "kendall", "spearman"), 
                       several.ok = FALSE)
   if (identical(method, "spearman")) {
     stop("Sorry, ", sQuote("method = spearman"), " is not yet supported.")
   }
-  if (!isTRUEorFALSE(ignore_strand)){
-    stop(sQuote('ignore_strand'), " must be ", sQuote("TRUE"), " or ", 
-         sQuote("FALSE"), ".")
+  
+  # Remove the strand if ignore_strand = TRUE
+  if (ignore_strand){
+    cometh <- unstrand(cometh)
+    mls <- unstrand(cometh)
   }
   
-  ## TODO: Dispatch on different methods depending on the value of NIL.
-  ## See above for discussion of methods appropriate for different NIL-values.  
+  # Extract rd_cometh and sort it. 
+  # Also sort mls so that it is consistent with cometh.
+  rd_cometh <- sort(rowData(cometh))
+  mls <- sort(mls)
   
-  ## TODO: Include methylation_type, NIL, IPD, feature, seqinfo, method etc. 
-  ## in output. Probably want a BetaCor class for this job.
-  
-}
+  # Annotate each methylation loci by feature (if same_feature = FALSE).
+  # Annotate mls if using nil; annotate cometh if using ipd.
+  # Otherwise, simply say that all loci are in the feature (ifc = TRUE).
+  if (!same_feature & !missing(feature)) {
+    if (!missing(ipd)) {
+      mcols(rd_cometh)$ifc <- overlapsAny(rd_cometh, feature)
+    } else {
+      mcols(mls)$ifc <- overlapsAny(mls, feature)
+    }
+  } else {
+    if (!missing(ipd)){
+      mcols(rd_cometh)$ifc <- TRUE
+    } else {
+      mcols(mls)$ifc <- TRUE
+    }
+  }
 
+  # Construct the index of "valid pairs".
+  # Use .autoCorVP() if constructing pairs for a given IPD and ignoring NIL.
+  # Use .generalNILVP() if contructing pairs for a given NIL and ignoring IPD.
+  if (!missing(ipd)) {
+    vp_idx <- .autoCorVP(rd_cometh = rowData(cometh), ipd = ipd)
+  } else{
+    vp_idx <- .generalNILVP(rd_cometh = rowData(cometh), mls = mls, nil = nil)
+  }
+  
+  ## TODO: vp_idx doesn't say _what_ each fsipd combination is.
+  ## Should I record this and report it in .autoCorVP() and .generalNILVP(), or 
+  ## re-compute it at the level of betaCor()?
+  
+  ## TODO: Construct the "valid pairs" from the index.
+  
+  ## TODO: Annotate each "valid pair" by feature (if same_feature = TRUE)
+  ## Remove those pairs that aren't in the same feature.
+  
+  ## TODO: Compute correlations of "valid pairs", stratified by vp2fsipdc.
+  ## Make sure to use the supplied "method".
+  
+  ## TODO: Include methylation_type, NIL, IPD, feature, feature_name, seqinfo, 
+  ## method etc. in output. Might be tempting to create a BetaCor class for 
+  ## this job, but something lighter-weight would be preferable, e.g. 
+  ## AnnotatedDataFrame.
+  ## Columns of output should include sampleName (for only within-sample 
+  ## correlatons), co-ordinates (for only between-sample correlations of 
+  ## specific pairs), IFC (if feature supplied), strand, IPD and cor.
+
+}
+}

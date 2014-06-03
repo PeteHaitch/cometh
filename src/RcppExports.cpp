@@ -54,6 +54,22 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
+// makeAutoCorVP
+List makeAutoCorVP(IntegerVector s, IntegerVector ipd);
+RcppExport SEXP cometh_makeAutoCorVP(SEXP sSEXP, SEXP ipdSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerVector >::type s(sSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type ipd(ipdSEXP );
+        List __result = makeAutoCorVP(s, ipd);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
 // rowDiffsCpp
 IntegerMatrix rowDiffsCpp(IntegerMatrix A);
 RcppExport SEXP cometh_rowDiffsCpp(SEXP ASEXP) {

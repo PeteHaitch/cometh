@@ -3,8 +3,9 @@
 \alias{betaCor}
 \title{Compute correlations of pairs of beta-values.}
 \usage{
-betaCor(cometh, mls, ipd, nil = 0L, feature = NA, ignore_strand = FALSE,
-  method = c("pearson", "kendall", "spearman"))
+betaCor(cometh, mls, nil = 0L, ipd, feature, feature_name,
+  same_feature = FALSE, ignore_strand = FALSE, method = c("pearson",
+  "kendall", "spearman"))
 }
 \arguments{
 \item{cometh}{A CoMeth1 object.}
@@ -17,22 +18,29 @@ in which case \code{betaCor} effectively assumes that \code{cometh} contains
 all potential methylation loci (this is not recommended).}
 
 \item{ipd}{An integer vector of IPDs. Correlations will only be computed
-using pairs with an IPD found in \code{ipd}. The default value,
-\code{NULL}, uses all observed IPDs. Setting \code{ipd = 0} will removes the
-IPD strata (see examples).}
+using pairs with an IPD found in \code{ipd}. If \code{ipd} is specified, then
+the number of intervening loci (NIL) is ignore. Only one of \code{ipd} or
+\code{nil} should be specified.}
 
-\item{nil}{The number of intervening loci allowed in each pair. The default,
-\code{nil = 0}, means that only pairs made of adjacent loci are considered.
-To use all pairs, set \code{nil = Inf} but \emph{this will take a very long
-time (and probably crash) because there are so many combinations}.}
+\item{nil}{The number of intervening loci (NIL) allowed in each pair. The
+default, \code{nil = 0}, means that only pairs made of adjacent loci are
+considered. See the \code{ipd} parameter for information on how to use all
+pairs, regardless of NIL. Only one of \code{ipd} or \code{nil} should be
+specified.}
 
-\item{feature}{A character. The name of the feature used to stratify the
-correlations. The default, \code{feature = NA} means that no feature is
-used. Otherwise, \code{feature} must be metadata of the m-tuples in the
-\code{cometh} object, that is, one of \code{colnames(mcols(cometh))}.}
+\item{feature}{A \code{GRanges} object. If supplied, the correlations are
+stratified by whether the methylation loci overlap a range in the supplied
+\code{feature}. For example, correlations might be stratified by whether the
+loci are from a CGI. The details of this stratification are controlled by the
+\code{same_strand} parameter.}
+
+\item{same_feature}{logical. If supplying a \code{feature}, should pairs of
+methylation loci be required to be in the same feature (TRUE) or just in the
+same feature class (FALSE). Two loci are in the same feature class if, for
+example, they are both in CGIs but each loci is in a \emph{different} CGI.}
 
 \item{ignore_strand}{logical. Should the strand of the methylation loci be
-ignored (default: \code{FALSE})?}
+ignored (default: \code{FALSE}).}
 
 \item{method}{A character string indicating which correlation coefficient
 is to be computed. One of "pearson" (default), "kendall", or "spearman",
@@ -50,8 +58,8 @@ correlation for a particular "sample-IPD-features" combination.
 \description{
 Given a \code{\link{CoMeth1}} object, \code{betaCor} computes the
 correlations of pairs of beta-values. Correlations are computed per-sample
-and are stratified by the \code{ipd} and \code{features} of the pairs of
-methylation loci.
+and are stratified by the \code{strand}, \code{features} and \code{ipd} of
+the pairs of methylation loci.
 }
 \note{
 Correlations are computed using \code{\link[stats]{cor}},

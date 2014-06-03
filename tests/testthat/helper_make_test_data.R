@@ -99,7 +99,8 @@ make_CoMeth1_data <- function(mls, f, s) {
   i <- sort(sample(length(mls), n))
   rd <- MTuples(seqnames = seqnames(mls)[i], 
                 pos = matrix(start(mls)[i], ncol = 1), 
-                strand = strand(mls)[i])
+                strand = strand(mls)[i],
+                seqinfo = seqinfo(mls))
   val <- lapply(seq_len(s), function(i, n) {
     M <- matrix(rpois(n = n, lambda = 10), ncol = 1)
     U <- matrix(rpois(n = n, lambda = 3), ncol = 1)
@@ -113,6 +114,7 @@ make_CoMeth1_data <- function(mls, f, s) {
   EP <- .EP(list(M = M, U = U))
   assays = SimpleList(M = M, U = U, beta = beta, EP = EP)
   cd <- DataFrame(methylation_type = rep('CG', s))
+  rownames(cd) <- paste0('s', seq_len(s))
   
   new("CoMeth1", SummarizedExperiment(rowData = rd, assays = assays, 
                                       colData = cd))
