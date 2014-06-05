@@ -37,7 +37,9 @@ loci are from a CGI. The details of this stratification are controlled by the
 \item{same_feature}{logical. If supplying a \code{feature}, should pairs of
 methylation loci be required to be in the same feature (TRUE) or just in the
 same feature class (FALSE). Two loci are in the same feature class if, for
-example, they are both in CGIs but each loci is in a \emph{different} CGI.}
+example, they are both in CGIs but each loci is in a \emph{different} CGI.
+This only affects pairs of loci that are in the feature, i.e., pairs in the
+"gaps" betweens features need not be in the same "gap".}
 
 \item{ignore_strand}{logical. Should the strand of the methylation loci be
 ignored (default: \code{FALSE}).}

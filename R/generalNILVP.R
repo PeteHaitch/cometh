@@ -107,5 +107,13 @@
                                     strand = strand(rd_cometh_vp))
   vp2fsipdc <- subjectHits(findOverlaps(rd_cometh_vp_fsipdc_gr, fsipdc_gr))
   
-  return(list(xx = xx, yy = yy, vp2fsipdc = vp2fsipdc))
+  # fsipdc_df maps vp2fsipdc to the actual fsipdc.
+  fsipdc_df <- DataFrame(idx = seq_along(fsipdc_gr), 
+                      feature = seqnames(fsipdc_gr), 
+                      strand = strand(fsipdc_gr), 
+                      ipd = start(fsipdc_gr))
+  # Only include those fsipdc that are actually observed.
+  fsipdc_df <- fsipdc_df[sort(unique(vp2fsipdc)), ]
+  
+  return(list(xx = xx, yy = yy, vp2fsipdc = vp2fsipdc, fsipdc_df = fsipdc_df))
 }

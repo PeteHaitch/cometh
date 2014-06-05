@@ -6,8 +6,8 @@ using namespace Rcpp;
 List makeAutoCorVP(IntegerVector s, IntegerVector ipd) {
   
   // Initiate vectors to store results.
-  std::vector<int> x;
-  std::vector<int> y;
+  std::vector<int> xx;
+  std::vector<int> yy;
 
   // Create variables used in the for-loop.
   int n = s.size();
@@ -31,8 +31,8 @@ List makeAutoCorVP(IntegerVector s, IntegerVector ipd) {
         Record (i + 1, j + 1) because R vectors are 1-based and C++ vectors 
         are 0-based. 
         */
-        x.push_back(i + 1); 
-        y.push_back(j + 1);
+        xx.push_back(i + 1); 
+        yy.push_back(j + 1);
         j += 1;
         k += 1;
       } else if ((s[j] - s[i]) < max_ipd) {
@@ -48,6 +48,6 @@ List makeAutoCorVP(IntegerVector s, IntegerVector ipd) {
     }
   }
   
-  return List::create(_["x"] = x, _["y"] = y);
+  return List::create(_["xx"] = xx, _["yy"] = yy);
   
 }

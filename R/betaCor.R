@@ -42,7 +42,9 @@
 #' @param same_feature logical. If supplying a \code{feature}, should pairs of
 #' methylation loci be required to be in the same feature (TRUE) or just in the 
 #' same feature class (FALSE). Two loci are in the same feature class if, for 
-#' example, they are both in CGIs but each loci is in a \emph{different} CGI.
+#' example, they are both in CGIs but each loci is in a \emph{different} CGI. 
+#' This only affects pairs of loci that are in the feature, i.e., pairs in the 
+#' "gaps" betweens features need not be in the same "gap".
 #' @param ignore_strand logical. Should the strand of the methylation loci be 
 #' ignored (default: \code{FALSE}).
 #' @param method A character string indicating which correlation coefficient 
@@ -135,6 +137,7 @@ betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
       stop(sQuote('same_feature'), " must be ", sQuote("TRUE"), " or ", 
            sQuote("FALSE"))
     }
+  }
   if (!isTRUEorFALSE(ignore_strand)) {
     stop(sQuote('ignore_strand'), " must be ", sQuote("TRUE"), " or ", 
          sQuote("FALSE"))
@@ -156,51 +159,79 @@ betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
   rd_cometh <- sort(rowData(cometh))
   mls <- sort(mls)
   
-  # Annotate each methylation loci by feature (if same_feature = FALSE).
-  # Annotate mls if using nil; annotate cometh if using ipd.
-  # Otherwise, simply say that all loci are in the feature (ifc = TRUE).
-  if (!same_feature & !missing(feature)) {
-    if (!missing(ipd)) {
-      mcols(rd_cometh)$ifc <- overlapsAny(rd_cometh, feature)
-    } else {
-      mcols(mls)$ifc <- overlapsAny(mls, feature)
-    }
+  # Annotate each methylation loci by feature (if feature supplied).
+  if (!missing(feature)) {
+    mcols(rd_cometh)$ifc <- overlapsAny(rd_cometh, feature)
+    mcols(mls)$ifc <- overlapsAny(mls, feature)
   } else {
-    if (!missing(ipd)){
-      mcols(rd_cometh)$ifc <- TRUE
-    } else {
-      mcols(mls)$ifc <- TRUE
-    }
+    mcols(rd_cometh)$ifc <- TRUE
+    mcols(mls)$ifc <- TRUE
   }
 
   # Construct the index of "valid pairs".
   # Use .autoCorVP() if constructing pairs for a given IPD and ignoring NIL.
   # Use .generalNILVP() if contructing pairs for a given NIL and ignoring IPD.
   if (!missing(ipd)) {
-    vp_idx <- .autoCorVP(rd_cometh = rowData(cometh), ipd = ipd)
+    vp_idx <- .autoCorVP(rd_cometh = rd_cometh, ipd = ipd)
   } else{
-    vp_idx <- .generalNILVP(rd_cometh = rowData(cometh), mls = mls, nil = nil)
+    vp_idx <- .generalNILVP(rd_cometh = rd_cometh, mls = mls, nil = nil)
   }
   
-  ## TODO: vp_idx doesn't say _what_ each fsipd combination is.
-  ## Should I record this and report it in .autoCorVP() and .generalNILVP(), or 
-  ## re-compute it at the level of betaCor()?
+  # If same_feature = TRUE, then remove those pairs that are in the same 
+  # feature class but not in the same feature.
+  # Those pairs not in the feature class are unaffected since we already know 
+  # that they cannot be in the same feature because neither of them is in the 
+  # same feature class.
+  if (same_feature) {
+    # Construct candidate valid pairs, cvp.
+    cvp <- GRanges(seqnames = seqnames(rd_cometh)[vp_idx[['xx']]],
+                   ranges = IRanges(start = start(rd_cometh)[vp_idx[['xx']]],
+                                    end = end(rd_cometh)[vp_idx[['yy']]]),
+                   strand = strand(rd_cometh)[vp_idx[['xx']]],
+                   ifc = mcols(rd_cometh)[['ifc']][vp_idx[['xx']]])
+    
+    # Remove those pairs not within a single feature (nwasf).
+    # The ifc rd_cometh metadata then means that the pair is within a single 
+    # feature (TRUE) or not in the feature class (FALSE).
+    nwasf <- !overlapsAny(cvp, feature, type = 'within') & 
+      (mcols(cvp)[['ifc']] == TRUE)
+    fscipdc_df_to_remove <- vp_idx[['fsipdc_df']][['idx']] %in%
+      sort(unique(vp_idx[['vp2fsipdc']][!nwasf]))
+    vp_idx <- list(xx = vp_idx[['xx']][!nwasf], yy = vp_idx[['yy']][!nwasf], 
+                   vp2fsipdc = vp_idx[['vp2fsipdc']][!nwasf], 
+                   fsipdc_df = vp_idx[['fsipdc_df']][fscipdc_df_to_remove, ])
+  }
   
-  ## TODO: Construct the "valid pairs" from the index.
+  # Compute correlations of "valid pairs", stratified by vp2fsipdc.
+  ## TODO: Is lapply+by the best way to compute these?
+  ## TODO: Could be parallelised; by sample or by index or by both?
+  ## TODO: Should warnings produced by cor be suppressed?
+  corr <- lapply(sampleNames(cometh), function(sn, beta, xx, yy, vp2fsipdc,
+                                              method) {
+    beta <- cbind(beta[xx, sn, drop = TRUE], beta[yy, sn, drop = TRUE])
+    val <- by(data = beta, INDICES = vp2fsipdc,
+              FUN = function(beta, use, method) {
+                cor(x = beta[, 1], y = beta[, 2], use = use, method = method)
+              }, use = "na.or.complete", method = method, simplify = TRUE)
+    return(val)
+  }, beta = assay(cometh, "beta"), xx = vp_idx$xx, yy = vp_idx$yy, 
+  vp2fsipdc = vp_idx$vp2fsipdc, method = method)
   
-  ## TODO: Annotate each "valid pair" by feature (if same_feature = TRUE)
-  ## Remove those pairs that aren't in the same feature.
-  
-  ## TODO: Compute correlations of "valid pairs", stratified by vp2fsipdc.
-  ## Make sure to use the supplied "method".
-  
-  ## TODO: Include methylation_type, NIL, IPD, feature, feature_name, seqinfo, 
-  ## method etc. in output. Might be tempting to create a BetaCor class for 
-  ## this job, but something lighter-weight would be preferable, e.g. 
-  ## AnnotatedDataFrame.
+  ## TODO: Refine output. Should include methylation_type, NIL, IPD, feature, 
+  ## feature_name, seqinfo, method etc. in output. Might be tempting to create 
+  ## a BetaCor class for this job, but something lighter-weight would be 
+  ## preferable, e.g. an AnnotatedDataFrame.
   ## Columns of output should include sampleName (for only within-sample 
   ## correlatons), co-ordinates (for only between-sample correlations of 
   ## specific pairs), IFC (if feature supplied), strand, IPD and cor.
+  val <- DataFrame(sample_name = Rle(sampleNames(cometh), sapply(corr, length)),
+                   in_feature = rep(vp_idx[['fsipdc_df']][['feature']], 
+                                   ncol(cometh)),
+                   strand = rep(vp_idx[['fsipdc_df']][['strand']], 
+                                ncol(cometh)),
+                   IPD = rep(vp_idx[['fsipdc_df']][['ipd']], 
+                             ncol(cometh)),
+                   corr = unlist(corr, use.names = FALSE)
+                   )
 
-}
 }
