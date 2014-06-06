@@ -43,6 +43,8 @@ Collate:
     'findOverlaps-methods.R'
     'fread.comethylation.R'
     'generalNILVP.R'
+    'methods-BetaCor-class.R'
     'methods-CoMeth-class.R'
     'methods-MTuples-class.R'
     'methods-MethylationLociSet-class.R'
+    'read.mbias.R'

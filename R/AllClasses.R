@@ -569,3 +569,20 @@ setClass("MethylationLociSet",
 ### average beta values of the m-tuple__.
 ### __Because of this, I will not include this as part of the CoMeth VIRTUAL 
 ### class or any of its concrete subclasses__
+
+### -------------------------------------------------------------------------
+### BetaCor 
+###
+
+.valid.BetaCor <- function(object){
+  ## TODO
+  TRUE
+}
+
+setClass("BetaCor", 
+         contains = "DataFrame",
+         slots = c(methylation_type = "character", NIL = "integer", 
+                   IPD = "integer", feature_name = "character", 
+                   same_feature = "logical", ignore_strand = "logical", 
+                   seqinfo = "Seqinfo", method = "character"),
+         validity = .valid.BetaCor)

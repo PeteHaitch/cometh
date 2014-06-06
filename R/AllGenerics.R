@@ -58,3 +58,5 @@ setGeneric("getM", function(x, ...) {
 setGeneric("getMethylationType",function(x, ...) { 
   standardGeneric("getMethylationType")
 })
+
+## TODO: Why isn't sampleNames and sampleNames<- working?

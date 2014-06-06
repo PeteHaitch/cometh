@@ -96,13 +96,12 @@ betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
     if (length(nil) != 1L || !is.numeric(nil) || (nil != floor(nil))) {
       stop(sQuote("nil"), " must be an integer.")
     }
-    stop("Sorry, currently only supports computing 'autocorrelations'.", 
-         " Please supply an ", sQuote("ipd"), " instead of an ", sQuote("nil"), 
-         ".")
+    nil <- NA_integer_
   } else if (missing(nil)){
     if (!is.numeric(ipd)){
       stop(sQuote('ipd'), " must be an integer vector.")
     }
+    ipd <- NA_integer_
   }
   
   # Check that cometh and mls are defined on compatible reference genomes.
@@ -171,7 +170,7 @@ betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
   # Construct the index of "valid pairs".
   # Use .autoCorVP() if constructing pairs for a given IPD and ignoring NIL.
   # Use .generalNILVP() if contructing pairs for a given NIL and ignoring IPD.
-  if (!missing(ipd)) {
+  if (!is.na(ipd)) {
     vp_idx <- .autoCorVP(rd_cometh = rd_cometh, ipd = ipd)
   } else{
     vp_idx <- .generalNILVP(rd_cometh = rd_cometh, mls = mls, nil = nil)
@@ -218,20 +217,22 @@ betaCor <- function(cometh, mls, nil = 0L, ipd, feature, feature_name,
   vp2fsipdc = vp_idx$vp2fsipdc, method = method)
   
   ## TODO: Refine output. Should include methylation_type, NIL, IPD, feature, 
-  ## feature_name, seqinfo, method etc. in output. Might be tempting to create 
-  ## a BetaCor class for this job, but something lighter-weight would be 
-  ## preferable, e.g. an AnnotatedDataFrame.
-  ## Columns of output should include sampleName (for only within-sample 
-  ## correlatons), co-ordinates (for only between-sample correlations of 
+  ## feature_name, seqinfo, method etc. in output. 
+  ## Columns of output should include sampleName (only for within-sample 
+  ## correlatons), co-ordinates (only for between-sample correlations of 
   ## specific pairs), IFC (if feature supplied), strand, IPD and cor.
-  val <- DataFrame(sample_name = Rle(sampleNames(cometh), sapply(corr, length)),
-                   in_feature = rep(vp_idx[['fsipdc_df']][['feature']], 
+  df <- DataFrame(sample_name = Rle(sampleNames(cometh), sapply(corr, length)),
+                  in_feature = rep(vp_idx[['fsipdc_df']][['feature']], 
                                    ncol(cometh)),
-                   strand = rep(vp_idx[['fsipdc_df']][['strand']], 
-                                ncol(cometh)),
-                   IPD = rep(vp_idx[['fsipdc_df']][['ipd']], 
-                             ncol(cometh)),
-                   corr = unlist(corr, use.names = FALSE)
-                   )
+                  strand = rep(vp_idx[['fsipdc_df']][['strand']], 
+                               ncol(cometh)),
+                  IPD = rep(vp_idx[['fsipdc_df']][['ipd']], 
+                            ncol(cometh)),
+                  corr = unlist(corr, use.names = FALSE)
+  )
+  beta_cor <- new("BetaCor", df, methylation_type = getMethylationType(cometh), 
+             NIL = nil, IPD = ipd, feature_name = feature_name, 
+             same_feature = same_feature, ignore_strand = ignore_strand, 
+             seqinfo = seqinfo(cometh), method = method)
 
 }
