@@ -10,6 +10,7 @@
 ### TODO: Extend to between-sample correlations of beta-values. This includes 
 ### between-sample correlations within each pair of loci and or between pairs of
 ### loci with the same feature-strand-IPD ombination (fsipdc).
+### TODO: Make Spearman correlation the default because data are non-Normal?
 
 #' Compute correlations of pairs of beta-values.
 #' 

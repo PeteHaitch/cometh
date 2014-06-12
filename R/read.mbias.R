@@ -85,6 +85,10 @@ read.mbias <- function(file) {
   # Re-order columns
   y <- y[, c('read', 'read_pos', 'methylation_type', 'M', 'U', 'total', 'perc_M')]
   
+  # Replace CpG with CG
+  y$methylation_type <- ifelse(y$methylation_type == 'CpG', 'CG', 
+                               y$methylation_type)
+  
   # Convert to an MBias object.
   return(y)
 }
