@@ -26,7 +26,6 @@ Suggests:
     testthat,
     knitr,
     BSgenome.Hsapiens.UCSC.hg19,
-    BSgenome.Celegans.UCSC.ce10,
     rtracklayer
 LinkingTo: Rcpp
 Collate:
