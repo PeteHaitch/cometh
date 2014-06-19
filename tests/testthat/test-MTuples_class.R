@@ -196,7 +196,6 @@ test_that("'compare', works", {
   expect_that(compare(m1_x, m1_y), is_identical_to(c(-1L, rep(0L, 9))))
   expect_that(compare(m2_x, m2_y), is_identical_to(c(-2L, -2L, rep(0L, 8))))
   expect_that(compare(m3_x, m3_y), is_identical_to(c(-2L, -2L, -2L, rep(0L, 7))))
-
 })
 
 test_that("'<=' works", {

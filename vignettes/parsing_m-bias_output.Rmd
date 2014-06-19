@@ -1,0 +1,213 @@
+---
+title: "Parsing M-bias output"
+author: Peter Hickey
+date: 13 April 2014
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(eval = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+The `bismark_methylation_extractor` produces simple plots of M-bias. While useful, I find these plots a little limited and would like more control over the final figures. Furthermore, I would like to be able to automate the process of choosing how much of the start and end of each read should be ignored based on the M-bias results.
+
+# File format
+The output file of `bismark_methylation_extractor --mbias_only` (`<sampleName>.M-bias.txt`) isn't a simple tabular file. 
+
+For single end data it looks something like this:
+```
+CpG context
+===========
+position        count methylated        count unmethylated      % methylation   coverage
+1       3959916 1669238 70.35   5629154
+.
+.
+.
+86      831931  421630  66.37   1253561
+
+CHG context
+===========
+position        count methylated        count unmethylated      % methylation   coverage
+1       636981  24827050        2.50    25464031
+.
+.
+.
+86      29437   6969134 0.42    6998571
+
+CHH context
+===========
+position        count methylated        count unmethylated      % methylation   coverage
+1       1797478 73925548        2.37    75723026
+.
+.
+.
+
+86      79795   19761957        0.40    19841752
+```
+
+For paired end data it looks something like this:
+```
+CpG context (R1)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       2701458 643907  80.75   3345365
+.
+.
+.
+101     1536977 432208  78.05   1969185
+
+CHG context (R1)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       1240592 13879394        8.20    15119986
+.
+.
+.
+101     81480   9630678 0.84    9712158
+
+CHH context (R1)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       3415842 44731045        7.09    48146887
+.
+.
+.
+101     245788  32786176        0.74    33031964
+
+CpG context (R2)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       511797  5938003 7.94    6449800
+.
+.
+.
+101     1864777 0       100.00  1864777
+
+CHG context (R2)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       907847  13406746        6.34    14314593
+.
+.
+.
+101     60106   0       100.00  60106
+
+CHH context (R2)
+================
+position        count methylated        count unmethylated      % methylation   coverage
+1       2837397 44258539        6.02    47095936
+.
+.
+.
+101     164300  0       100.00  164300
+
+```
+
+## `read.mbias()`
+I wrote a function to parse these files, `read.mbias()`:
+```{r}
+read.mbias <- function(file){
+  x <- read.table(file, sep = '\n', as.is = TRUE)
+  header_lines <- sapply(X = x, function(xx){grepl(pattern = 'context', x = xx)})
+  y <- vector(mode = "list", length = sum(header_lines))
+  names(y) <- x[header_lines]
+  z <- sapply(X = x, function(xx){grep(pattern = "context|^=|position", x= xx, invert = TRUE)})
+  dz <- diff(z)
+  next_context_idx <- c(which(dz > 1), nrow(z)) # nrow(z) to ensure the last row can be found
+  colnames_idx <- sapply(X = x, function(xx){grep(pattern = "position", x = xx)})[1]
+  colnames <- strsplit(x = x[colnames_idx, ], split = "\t")[[1]]
+  for (i in seq_along(next_context_idx)){
+    start_idx <- ifelse(i == 1, 4, z[next_context_idx[i - 1]] + 4) # +4 to skip the intermediate 'header' rows
+    end_idx <- z[next_context_idx[i]]  
+    yy <- x[seq(from = start_idx, to = end_idx, by = 1), ]
+    y[[i]] <- do.call("rbind", lapply(yy, function(yyy, colnames){
+      tmp <- strsplit(yyy, split = "\t")
+      val <- data.frame(as.integer(tmp[[1]][1]), as.integer(tmp[[1]][2]), as.integer(tmp[[1]][3]), as.numeric(tmp[[1]][4]), as.integer(tmp[[1]][5]))
+      colnames(val) <- colnames
+      return(val)
+      }, colnames = colnames))
+    }
+  y <- do.call("rbind", y)
+  y$Context <- strtrim(rownames(y), width = 3)
+  
+  ## Add R1/R2 annotation if paired-end data
+  if (grepl(pattern = "R1", x = rownames(y)[1])){
+    y$Read <- ifelse(grepl(pattern = "R1", x = rownames(y)), "R1", "R2")
+  } else{
+    y$Read <- "SE"
+  }
+  rownames(y) <- NULL
+  return(y)
+  }
+```
+
+## `plot.mbias`
+__TODOs__
+* Make this into a method rather than a function.
+* Allow options to be passed to `plot.mbias()`.
+* Add sample name to title, etc.
+
+```{r}
+library(ggplot2)
+plot.mbias <- function(mbias, sample_name){
+  presentation_theme <- theme(axis.text = element_text(size = 25, colour = "black"), axis.title.x = element_text(size = 30), axis.title.y = element_text(size = 30, angle = 90), strip.text.x = element_text(size = 25, face = "italic"), strip.text.y = element_text(size = 25, angle = 270, face = "italic"), plot.title = element_text(size = 35, face = "bold"), legend.text = element_text(size = 20), legend.title = element_text(size = 25, face = "bold"))
+  if (all(mbias$Read == "SE")){
+    ggplot(data = mbias, aes_string(x = "position", y = "`% methylation`")) + geom_line(aes(colour = Context), size = 1) + presentation_theme + ylim(c(0, 100))
+    } else{
+      #ggplot(data = mbias, aes_string(x = "position", y ="`% methylation`")) + geom_line(aes(colour = Context, linetype = Read), size = 1) + presentation_theme
+      ggplot(data = mbias, aes_string(x = "position", y ="`% methylation`")) + geom_line(aes(colour = Context), size = 1) + presentation_theme + facet_grid(Read ~ .) + ylim(c(0, 100)) + ggtitle(paste0(sample_name, ": M-bias"))
+
+    }
+}
+```
+
+## `trim
+```{r}
+trim <- function(mbias, mad_cutoff = 3){
+  l <- expand.grid(unique(mbias$Context), unique(mbias$Read), stringsAsFactors = FALSE)
+  val <- vector("list", nrow(l) / 2)
+  for (i in 1:nrow(l)){
+    m <- mbias[mbias$Context == l[i, 1] & mbias$Read == l[i, 2], 4]
+    val[[i]] <- which(abs(m - median(m)) > mad_cutoff * mad(m))
+  }
+  names(val) <- paste0(l[, 1], l[, 2])
+  return(val)
+}
+```
+
+## __TODO__
+* Display results of `trim` in the plot created by `plot.mbias`.
+
+# Examples
+
+Here I read in the m-bias data for single-end (FF) and paired-end (E13BUF) samples.
+
+## FF: Single end data 
+```{r}
+setwd('/Volumes/hickey/methylation_m-tuples/')
+FF <- read.mbias(file = "FF/FF.M-bias.txt")
+plot.mbias(FF, "FF")
+```
+
+## E13BUF: Paired end data
+```{r}
+setwd('/Volumes/hickey/methylation_m-tuples/')
+E13BUF <- read.mbias(file = 'E13BUF/E13BUF.M-bias.txt')
+plot.mbias(E13BUF, "E13BUF")
+```
+
+## Adipose data
+```{r, results = 'asis'}
+setwd('/Volumes/hickey/methylation_m-tuples/')
+sample_names <- expand.grid(c('E13', 'E18', 'E23'), c('BUF', 'SA', 'VA', 'VAT'), stringsAsFactors = FALSE)
+sample_names <- paste0(sample_names[, 1], sample_names[, 2])
+for(sample_name in sample_names){
+  file <- paste0(sample_name, '/', sample_name, '.M-bias.txt')
+  mbias <- read.mbias(file = file)
+  print(plot.mbias(mbias, sample_name = sample_name))
+  trim(mbias, mad_cutoff = 4)
+  }
+```

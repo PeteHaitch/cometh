@@ -10,12 +10,15 @@
 #' Check whether all elements of a numeric vector are identical (within machine precision)
 #' @param x a numeric vector.
 # 
-#' @return TRUE if all elements of the vector are identical (within machine precision). FALSE in all other cases, including if the vector contains any NAs
+#' @return TRUE if all elements of the vector are identical (within machine 
+#' precision). FALSE in all other cases, including if the vector contains any 
+#' NAs.
 #' 
 #' @export
 #' @keywords internal
 #' 
-#' @note This function is based on Hadley and John's answer to http://stackoverflow.com/questions/4752275/test-for-equality-among-all-elements-of-a-single-vector
+#' @note This function is based on Hadley and John's answer to 
+#' http://stackoverflow.com/q/4752275
 .zero_range <- function(x, tol = .Machine$double.eps ^ 0.5) {
   if (length(x) == 1) {
     val <- TRUE
@@ -150,4 +153,127 @@
     stop("'m' must be an int. 'm' must be greater than 0.")
   }
   sort(do.call(paste0, expand.grid(lapply(seq_len(m), function(x){c('M', 'U')}))))
+}
+
+## TODO: Document
+## TOOD: Test
+#' @export
+#' @keywords internal
+.EP <- function(x){
+  p <- lapply(X = x, FUN = function(xx, y){
+    xx / y
+  }, y = Reduce(x = x, '+'))
+  val <- 1 - Reduce(x = lapply(p, function(pp){pp^2}), f = '+')
+  
+  return(val)
+}
+
+## TODO: Document
+#' @export
+#' @keywords internal
+.beta <- function(x){
+  val <- x[['M']] / (x[['M']] + x[['U']])
+  
+  return(val)
+}
+
+## TODO: Document
+## TODO: Tests
+#' Compute a log odds ratio
+#' 
+#' Uses base-2 logarithms.
+#' The default offset, which is used to avoid zero-counts, is 0.5.
+.LOR <- function(x, offset = 0.5){
+  # NOTE: Without the outer brackets the newline character is parsed and only 
+  # the numerator is evaluated when computing LOR(!)
+  lor <- (log2(x[['MM']] + offset) + log2(x[['UU']] + offset)
+          - log2(x[['MU']] + offset) - log2(x[['UM']] + offset))
+  return(lor)
+}
+
+## TODO: Document
+## TODO: Tests
+#' Compute the average methylation level (zeta) of an m-tuple
+#' 
+#' Definition based on Landan et al. (2012). zeta differs from mean(beta) 
+#' becuase it only uses reads containing all methylation loci in the m-tuple.
+.zeta <- function(x, m){
+  ## Count how many methylated bases in the m-tuple
+  ## From http://stackoverflow.com/a/12427831
+  nm <- sapply(regmatches(names(x), gregexpr("M", names(x))), length)
+  
+  numerator <- Reduce(f = '+', mapply(FUN = function(nm, x){nm * x}, nm = nm, 
+                                      x = x, SIMPLIFY = FALSE)) 
+  denominator <- m * Reduce(f = '+', x)
+  val <- numerator / denominator
+  
+  return(val)
+}
+
+## TODO: Tests
+#' Return the valid methylation types
+#' 
+#' @param methylation_type A character.
+#' @export
+#' @keywords internal
+#' @return Returns \code{TRUE} if a valid methylation type, otherwise 
+#' \code{FALSE}.
+.valid_methylation_type <- function(methylation_type) {
+  valid_methylation_types <- c('CG', 'CHG', 'CHH', 'CNN', 'CG/CHG', 'CG/CHH', 
+                               'CG/CNN', 'CHG/CHH',  'CHG/CNN', 'CHH/CNN', 
+                               'CG/CHG/CHH', 'CG/CHG/CNN', 'CHG/CHH/CNN', 
+                               'CG/CHG/CHH/CNN')
+  val <- methylation_type %in% valid_methylation_types
+  
+  return(val)
+}
+
+## TODO: This currently breaks when strand == '-'.
+## See email to Bioc-Devel https://stat.ethz.ch/pipermail/bioc-devel/2014-May/005820.html
+#' A helper function used by \code{\link{makeMLS}}.
+#'
+#' \code{\link{makeMLS}} uses \code{\link[BSgenome]{bsapply}} to apply 
+#' \code{\link[Biostrings]{matchPDict}} to all chromosomes of a 
+#' \code{\link[BSgenome]{bsgenome}} object. This returns a list of 
+#' \code{\link[IRanges]{IRanges}} that must then be converted to 
+#' \code{\link[GenomicRanges]{GRanges}}. This helper function does that.
+#' 
+#' @param irl A list of \code{\link[IRanges]{IRanges}} objects.
+#' @param strand A character vector of length 1. The strand of all methylation 
+#' loci in \code{irl}.
+#' @param seqinfo The \code{\link[GenomicRanges]{Seqinfo}} of all methylation 
+#' loci in \code{irl}.
+#' 
+#' @param Note, \code{.irl2gr} differs from calling 
+#' \code{as(IRangesList(irl), "GRanges")}, where \code{irl} is a list of 
+#' \code{\link[IRanges]{IRanges}} objects. Specifically, it requires the user 
+#' to specify the strand rather than simply setting it to \code{*}, it makes 
+#' all ranges of width = 1, with the start being the cytosine in the relevant 
+#' strand, and it requires the user to specify the 
+#' \code{\link[GenomicRanges]{Seqinfo}}.
+#' @export
+#' 
+.irl2gr <- function(irl, strand, seqinfo) {
+  
+  if (!is(seqinfo, "Seqinfo")){
+    stop(sQuote('seqinfo'), " must be a ", sQuote("Seqinfo"), " object.")
+  }
+  
+  # NOTE: Need to unname irl otherwise do.call returns a list (which is not 
+  # what I expected nor wanted). 
+  if (strand == '+') {
+    GRanges(seqnames = Rle(names(irl), sapply(irl, length)), 
+            ranges = resize(do.call("c", unname(unlist(irl))), width = 1, 
+                            fix = 'start'), 
+            strand = strand,
+            seqinfo = seqinfo)
+  } else if (strand == '-') {
+    GRanges(seqnames = Rle(names(irl), sapply(irl, length)), 
+            ranges = resize(do.call("c", unname(unlist(irl))), width = 1, 
+                            fix = 'end'),
+            strand = strand,
+            seqinfo = seqinfo)
+  } else {
+    stop("Unexpected ", sQuote('strand'))
+  }
 }

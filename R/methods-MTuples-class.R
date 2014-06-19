@@ -194,17 +194,17 @@ setMethod("getIPD", "MTuples", function(x){
   return(val)
 }
 
-setMethod("compare", c("MTuples", "MTuples"), function(x, y){
+setMethod("compare", c("MTuples", "MTuples"), function(x, y) {
   .MTuples.compare(x, y)
 })
 
-setMethod("<=", c("MTuples", "MTuples"), function(e1, e2){
-  .MTuples.compare(e1, e2) <= 0L
-})
-
-setMethod("==", c("MTuples", "MTuples"), function(e1, e2){
-  .MTuples.compare(e1, e2) == 0L
-})
+# setMethod("<=", c("MTuples", "MTuples"), function(e1, e2) {
+#   .MTuples.compare(e1, e2) <= 0L
+# })
+# 
+# setMethod("==", c("MTuples", "MTuples"), function(e1, e2) {
+#   .MTuples.compare(e1, e2) == 0L
+# })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### duplicated()  
@@ -265,8 +265,6 @@ duplicated.MTuples <- function(x, incomparables = FALSE, ...){
 #' @export
 setMethod("duplicated", "MTuples", .duplicated.MTuples)
 
-## TODO: .anyDuplicated() should return 0 if no duplicates and index 
-## of first duplicate __NOT__ TRUE/FALSE
 .anyDuplicated.MTuples <- function(x, incomparables = FALSE){
   if (!identical(incomparables, FALSE)){
     stop(sQuote('anyDuplicated'), " method for ", sQuote('MTuples'), 
@@ -413,7 +411,7 @@ setMethod(sort, "MTuples", function(x, decreasing = FALSE, ignore.strand = FALSE
 ### Show
 ###
 
-## Ensure the extraPos column "sticks" during subsetting, etc.
+# Ensure the extraPos column "sticks" during subsetting, etc.
 setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
           function(x) {
             c("extraPos")
@@ -445,7 +443,7 @@ setMethod(GenomicRanges:::extraColumnSlotNames, "MTuples",
   #          showAsCell)))
   #  }
   if (nc > 0L) {
-    tmp <- do.call(data.frame, c(lapply(mcols(x), IRanges:::showAsCell), 
+    tmp <- do.call(data.frame, c(lapply(mcols(x), S4Vectors:::showAsCell), 
                                  list(check.names = FALSE)))
     ans <- cbind(ans, `|` = rep.int("|", lx), as.matrix(tmp))
   }
@@ -474,7 +472,7 @@ showMTuples <- function(x, margin = "", print.seqlengths = FALSE){
                                                                                                      "column", "columns"), ":\n", sep = "")
   
   
-  out <- IRanges:::makePrettyMatrixForCompactPrinting(x, .makeNakedMatFromMTuples)
+  out <- S4Vectors:::makePrettyMatrixForCompactPrinting(x, .makeNakedMatFromMTuples)
   ## These lines commented out because classinfo is more complicated for MTuples objects than GRanges objects. For example, some of the `pos` information is stored in an IRanges object while some is stored in a matrix.
   #if (with.classinfo) {
   #    .COL2CLASS <- c(seqnames = "Rle", ranges = "IRanges", 

@@ -69,6 +69,10 @@
     .Call('cometh_compareMTuplesCpp', PACKAGE = 'cometh', a, b, C)
 }
 
+.makeAutoCorVP <- function(s, ipd) {
+    .Call('cometh_makeAutoCorVP', PACKAGE = 'cometh', s, ipd)
+}
+
 #' An internal function to compute differences for each row in a matrix.
 #' 
 #' @param A An integer \eqn{N \times K} matrix.

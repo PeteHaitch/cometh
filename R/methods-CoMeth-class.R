@@ -56,7 +56,9 @@ setMethod("getM", "CoMeth", function(x) {
 #' @include AllGenerics.R
 #' @export
 setMethod("getCoverage", "CoMeth", function(x) {
-  Reduce("+", assays(x))
+  m <- getM(x)
+  assay_names <- .make_m_tuple_names(m)
+  Reduce("+", assays(x)[assay_names])
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -64,6 +66,7 @@ setMethod("getCoverage", "CoMeth", function(x) {
 ###
 
 ## TODO: As of GenomicRanges_1.16.0, assays can be DataFrame objects and not just matrices. Decide which is a better type for the CoMeth class.
+## TODO: Profile constructor. It's much slower than I think it should be.
 
 #' The constructor function for CoMeth objects
 #'
@@ -136,12 +139,15 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #' @seealso \code{\link[GenomicRanges]{SummarizedExperiment}} for the class that
 #' \code{CoMeth} extends.
 #' 
-#' @return A \code{\link{CoMeth}} object
-#' @examples
+#' @return A \code{CoMeth1} (if \code{m} \eqn{= 1}), \code{CoMeth2} (if 
+#' \code{m} \eqn{= 2}) or \code{CoMeth3Plus} (if \code{m} \eqn{>= 3}) object. 
+#' All these are concrete subclasses of the VIRTUAL \code{\link{CoMeth}} class.
+#' 
+#' 
 #' cat("TODO")
 CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterList(), counts = DataFrameList(), seqnames = RleList(), pos = DataFrameList(), seqinfo = Seqinfo(), strand = RleList(), colData = DataFrame(), exptData = SimpleList(), ..., verbose = FALSE){
   
-  ## Check that all required arguments are not missing
+  # Check that all required arguments are not missing
   if (missing(sample_names)){
     stop(sQuote("sample_names"), " missing.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -157,12 +163,11 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
   if (missing(pos)){
     stop(sQuote('pos'), " missing. Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
-
   if (missing(seqinfo)){
     stop(sQuote('seqinfo'), " missing. Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
 
-  ## Check that all required arguments are of the correct class 
+  # Check that all required arguments are of the correct class 
   if (!is(sample_names, 'CharacterList')){
     stop(sQuote('sample_names'), " must be a ", sQuote('CharacterList'), ". Please see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -182,12 +187,12 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
     stop(sQuote('seqinfo'), " must be a ", sQuote('Seqinfo'), " object.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
   
-  ## Check that 'sample_names' are unique
+  # Check that 'sample_names' are unique
   if (!identical(unique(unlist(sample_names)), unlist(sample_names))){
     stop("Each element of ", sQuote("sample_names"), " must be unique.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
   
-  ## Check that all required arguments that are *Lists (e.g. RleList, DataFrameList, etc.) have the same names as the 'sample_names'
+  # Check that all required arguments that are *Lists (e.g. RleList, DataFrameList, etc.) have the same names as the 'sample_names'
   if (!setequal(names(methylation_type), unlist(sample_names))){
     stop("Names of ", sQuote('methylation_type'), " must match those in ", sQuote('sample_names'), ".\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }
@@ -201,7 +206,7 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
     stop("Names of ", sQuote('pos'), " must match those in ", sQuote('sample_names'), ".\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of this argument.")
   }  
   
-  ## Check that all required arguments have the correct dimensions
+  # Check that all required arguments have the correct dimensions
   if (!.zero_range(ncol(counts)) || !identical(log2(ncol(counts[[1]])), round(log2(ncol(counts[[1]])), 0))){
     stop(sQuote('ncol(counts)'), " must be identical for all elements of ", sQuote('counts'), " and should be a power of 2.\nPlease see the help page for CoMeth, which can accessed by typing ", sQuote("?CoMeth"), " at the R prompt, for further details of these arguments.")
   }
@@ -295,7 +300,20 @@ CoMeth <- function(sample_names = CharacterList(), methylation_type = CharacterL
   }
   
   ## Construct CoMeth object
-  new("CoMeth", SummarizedExperiment(assays = combined_data$counts, rowData = mtuples, colData = colData, exptData = exptData, verbose = verbose))
+  if (m == 1L){
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), beta = list(.beta(combined_data$counts)))
+    class <- "CoMeth1"
+  } else if (m == 2L){
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), LOR = list(.LOR(combined_data$counts, m)))
+    class <- "CoMeth2"
+  } else{
+    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)))
+    class <- "CoMeth3Plus"
+  }
+  new(class, SummarizedExperiment(assays = assays, rowData = mtuples, 
+                                  colData = colData, exptData = exptData, 
+                                  verbose = verbose))
+  
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -344,16 +362,18 @@ setMethod("cbind", "CoMeth", function(..., deparse.level = 1){
   sample_names <- as(unlist(lapply(args, sampleNames)), "CharacterList")
   methylation_type <- as(unlist(lapply(args, getMethylationType)), "CharacterList")
   names(methylation_type) <- sample_names
-  counts <- DataFrameList(unlist(lapply(args, function(x){
-    lapply(sampleNames(x), function(sn, x){
-      val <- sapply(seq_len(length(assays(x))), function(i, sn, x){
-        assay(x, i)[, sn]
+  counts <- DataFrameList(unlist(lapply(args, function(x, m){
+    lapply(sampleNames(x), function(sn, x, m){
+      #val <- sapply(seq_len(length(assays(x))), function(i, sn, x){
+      val <- sapply(.make_m_tuple_names(m), function(an, sn, x){
+        #assay(x, i)[, sn]
+        assay(x, an)[, sn]
         }, sn = sn, x = x)
       colnames(val) <- .make_m_tuple_names(m)
       val <- DataFrame(val)
       return(val)}, 
-      x = x)
-  })))
+      x = x, m = m)
+  }, m = m)))
   names(counts) <- sample_names
   seqnames <- RleList(unlist(lapply(args, function(x){replicate(n = ncol(x), seqnames(x))})))
   names(seqnames) <- sample_names
@@ -424,7 +444,18 @@ setMethod("rbind", "CoMeth", function(..., deparse.level = 1){
   }, args = args))
   names(assays) <- names(assays(args[[1]]))
   exptData <- do.call(what = "c", args = lapply(args, exptData))
-  new("CoMeth", SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
+  
+  ## Don't call the CoMeth constructor but because there's no need to "combine"
+  ## data, just need to initialise the class.
+  if (m == 1L){
+    class <- "CoMeth1"
+  } else if (m == 2L){
+    class <- "CoMeth2"
+  } else{
+    class <- "CoMeth3Plus"
+  }
+  
+  new(class, SummarizedExperiment(assays = assays, rowData = mtuples, colData = colData, exptData = exptData))
 })
 
 ## combine tries to figure out the combination of cbind and rbind that will automatically combine the CoMeth objects into a single CoMeth object.
@@ -487,6 +518,9 @@ setMethod(order, "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
   args <- lapply(list(...), rowData)
   do.call("order", c(args, list(na.last = na.last, decreasing = decreasing)))  
 })
+
+## TODO: Add an is.unsorted method.
+## TODO: sort(CoMeth, ignore.strand = TRUE) doesn't seem to be supported.
   
 
 
@@ -504,7 +538,7 @@ setMethod(order, "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
 #'
 #' @param files The \code{.tsv} files created by \code{comethylation}. These files may be compressed with gzip or bzip2.
 #' @param sample_names The sample names of each file.
-#' @param methylation_types A character vector with the type of methylation of each file.
+#' @param methylation_types A character vector with the type of methylation type of each file.
 #' @param quiet logical: if \code{FALSE} (default), \code{read.comethylation()} will print a line, saying how many items (m-tuples) have been read per file.
 #' @param seqinfo A \code{\link[GenomicRanges]{Seqinfo}} object containing information about the reference genome of the sample.
 #' @note The compression of \code{file} is determined by the file extension: \code{.gz} for compressed with gzip and \code{.bz2} for compressed with bzip2. Otherwise the file is assumed to be uncompressed.
@@ -566,7 +600,8 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo, 
 ### Show
 ###
 
-## TODO: Include methylation_type and 'm' when show-ing a CoMeth object
+## TODO: Include methylation_type and 'm' when show-ing a CoMeth object.
+## TODO: Rename "methylation patterns", as "assays" (or something similar).
 
 ## The show method is adapted from that of SummarizedExperiment
 #' @export

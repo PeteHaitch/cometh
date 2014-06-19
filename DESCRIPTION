@@ -1,6 +1,6 @@
 Package: cometh
 Type: Package
-Title: Analyse, manage and visualise co-methylation data
+Title: Analyse, manage and visualise co-methylation data.
 Version: 0.2
 Date: 2014-02-05
 Author: Peter Hickey <peter.hickey@gmail.com>
@@ -16,20 +16,34 @@ biocViews: DNAMethylation
 VignetteBuilder: knitr
 Imports:
     methods,
-    Rcpp,
-    GenomicRanges,
+    Biobase,
+    S4Vectors,
     IRanges,
-    Biobase
+    GenomeInfoDb,
+    GenomicRanges,
+    Rcpp
 Suggests:
     testthat,
-    knitr
+    knitr,
+    BSgenome.Hsapiens.UCSC.hg19,
+    rtracklayer
 LinkingTo: Rcpp
 Collate:
     'AllGenerics.R'
     'AllClasses.R'
     'AllUtilities.R'
     'RcppExports.R'
+    'autoCorVP.R'
+    'betaAutoCor.R'
+    'betaCor.R'
+    'betaCor_NIL0.R'
+    'betaCor_NILGeneral.R'
     'cometh.R'
     'findOverlaps-methods.R'
+    'fread.comethylation.R'
+    'generalNILVP.R'
+    'methods-BetaCor-class.R'
     'methods-CoMeth-class.R'
     'methods-MTuples-class.R'
+    'methods-MethylationLociSet-class.R'
+    'read.mbias.R'
