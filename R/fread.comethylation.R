@@ -1,5 +1,8 @@
 ## TODO: If this function is exported then need to add data.table and R.utils
 ## to Imports in DESCRIPTION.
+## TODO: Profile. Reading file is _super_fast, but construction of CoMeth 
+## object is slow. So, profile code and remove bottlenecks. 
+
 #' A faster version of \code{\link{read.comethylation}}
 #' 
 #' Uses \code{data.table::fread} for faster reading of \code{comethylation} 

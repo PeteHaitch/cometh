@@ -66,6 +66,7 @@ setMethod("getCoverage", "CoMeth", function(x) {
 ###
 
 ## TODO: As of GenomicRanges_1.16.0, assays can be DataFrame objects and not just matrices. Decide which is a better type for the CoMeth class.
+## TODO: Profile constructor. It's much slower than I think it should be.
 
 #' The constructor function for CoMeth objects
 #'
