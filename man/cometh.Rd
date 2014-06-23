@@ -7,7 +7,7 @@
 \alias{CoMeth2-class}
 \alias{CoMeth3Plus-class}
 \alias{compare,CoMeth,CoMeth-method}
-\alias{getCoverage,CoMeth-method}
+\alias{getCoverage}
 \alias{getIPD,CoMeth-method}
 \alias{getPos,CoMeth-method}
 \alias{order,CoMeth-method}
@@ -19,6 +19,8 @@
 CoMeth(assays = SimpleList(), rowData = MTuples(), colData = DataFrame(),
   exptData = SimpleList(), ..., verbose = FALSE)
 
+getCoverage(x, ...)
+
 \S4method{getPos}{CoMeth}(x)
 
 \S4method{getIPD}{CoMeth}(x)
@@ -26,8 +28,6 @@ CoMeth(assays = SimpleList(), rowData = MTuples(), colData = DataFrame(),
 \S4method{sampleNames}{CoMeth}(object)
 
 \S4method{sampleNames}{CoMeth,ANY}(object) <- value
-
-\S4method{getCoverage}{CoMeth}(x)
 
 \S4method{compare}{CoMeth,CoMeth}(x, y)
 
@@ -79,7 +79,8 @@ coercion during construction should be printed.}
 The \code{CoMeth} constructor returns the appropriate subclass
 depending on  the size of the m-tuples, i.e., the value of \eqn{m}.
 
-A numeric matrix. Each column of the matrix corresponds to a sample and each row to an m-tuple.
+A numeric matrix. Each column of the matrix corresponds to a sample
+and each row to an m-tuple.
 }
 \description{
 The \code{CoMeth} class is a virtual class extended from
@@ -92,9 +93,10 @@ Most users will use the \code{\link{read.comethylation}} function to
 construct the appropriate \code{CoMeth} object from the output \code{.tsv}
 file(s) produced by the \code{comethylation} Python software.
 
-#
+Get the sample-specfic sequencing coverage of each m-tuple in a
+\code{\link{CoMeth}} object.
 
-The \code{coverage} of a \code{\link{CoMeth}} object is the number of reads for each m-tuple, i.e. \code{rowSums(getCounts(CoMeth))}. The current implementation is slow.
+#
 
 Compare \code{MTuples}.
 }

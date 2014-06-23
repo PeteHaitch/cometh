@@ -65,14 +65,6 @@ setMethod("getM", "CoMeth", function(x) {
   getM(rowData(x))
 })
 
-#' Get the \code{coverage} from a \code{\link{CoMeth}} object.
-#'
-#' The \code{coverage} of a \code{\link{CoMeth}} object is the number of reads for each m-tuple, i.e. \code{rowSums(getCounts(CoMeth))}. The current implementation is slow.
-#' @param x A \code{\link{CoMeth}} object
-#'
-#' @return A numeric matrix. Each column of the matrix corresponds to a sample and each row to an m-tuple.
-#' @include AllGenerics.R
-#' @rdname CoMeth
 setMethod("getCoverage", "CoMeth", function(x) {
   m <- getM(x)
   assay_names <- .make_m_tuple_names(m)

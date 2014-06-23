@@ -31,13 +31,21 @@ setGeneric("getIPD", function(x, ...) {
 ### getCoverage
 ###
 
-## I accidentally defined getCoverage as a function, and not a method, in 
-## R/methods-CoMeth-class.R. This caused the obscure error:
+## I initially (and accidentally) defined getCoverage as a function, and not a 
+## method, in R/methods-CoMeth-class.R. This caused the obscure error:
 ## "cyclic name space dependency detected when loading ‘cometh’, already 
 ## loading ‘cometh’"
 ## This is the exact same problem as described 
 ## here: https://stat.ethz.ch/pipermail/r-devel/2011-March/060100.html
-#' @export
+#' Get the sample-specfic sequencing coverage of each m-tuple in a 
+#' \code{\link{CoMeth}} object.
+#'
+#' @param x A \code{\link{CoMeth}} object
+#'
+#' @return A numeric matrix. Each column of the matrix corresponds to a sample 
+#' and each row to an m-tuple.
+#' @include AllGenerics.R
+#' @rdname CoMeth
 setGeneric("getCoverage", function(x, ...) {
   standardGeneric("getCoverage")
 })

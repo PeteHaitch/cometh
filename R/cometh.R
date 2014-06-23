@@ -10,8 +10,12 @@
 #' @name cometh-package
 #' @useDynLib cometh
 #' @import Biobase S4Vectors IRanges GenomeInfoDb GenomicRanges Rcpp   
-#' @importFrom BiocParallel bplapply
-#' @importFrom data.table fread
-#' @importFrom R.utils gunzip
+#' @import BiocParallel
+#' @import data.table
+#' @import R.utils
 #' @references TODO
 NULL
+
+## TODO: Refine @import to @importFrom, e.g. I only need fread from data.table, 
+## gunzip from R.utils, and probably only a subset of functions from 
+## BiocParallel.

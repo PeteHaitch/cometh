@@ -1,8 +1,7 @@
-## TODO: Remove dependency on R.utils
+## TODO: Remove dependency on R.utils::gunzip
 ## TODO: Add bzip support.
 ## TODO: Profile.
-## TODO: Add offset (which is a parameter of .LOR)?
-
+## TODO: Add offset as a parameter (which is a parameter of .LOR)?
 
 #' Read \code{tsv} output files from \code{comethylation} software.
 #'
@@ -83,52 +82,71 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
     return(val)
   }, verbose = verbose)
   
-  # Compare all sample m-tuples (smt) against the sample with the most 
-  # m-tuples (i). Create a list of any putative sample-specific m-tuples and 
-  # unique-ify it (ssmt). Then, concatenate m-tuples from sample i with ssmt 
-  # (mt). By construction, mt will not contain any duplicate m-tuples.
-  smt <- lapply(x, '[[', 'mtuples')
-  m <- sapply(smt, getM)
-  if (!.zero_range(m)) {
-    stop("All files must contain the same sized m-tuples.")
-  }
-  m <- m[1L]
-  i <- which.max(sapply(smt, length))
-  # Compare all other samples against i
-  u <- bplapply(seq_along(smt)[-i], function(ii, x, y){
-    Rle(!overlapsAny(x[[ii]], y, type = 'equal'))
-  }, x = smt, y = smt[[i]])
-  ssmt <- unique(do.call("c", mapply('[', smt[-i], u)))
-  mt <- sort(c(smt[[i]], ssmt))
-  seqinfo(mt) <- seqinfo
+  if (length(sample_names) > 1) {
+    # If there are multiple samples/files then need to combine these.
+    # Compare all sample m-tuples (smt) against the sample with the most 
+    # m-tuples (i). Create a list of any putative sample-specific m-tuples and 
+    # unique-ify it (noti; note that m-tuples in noti are not strictly 
+    # sample-specific but are rather just a single copy of all m-tuples that 
+    # are  "not in i"). Then, concatenate m-tuples from sample i with noti 
+    # (mt). By construction, mt will contain a single copy of all m-tuples 
+    # observed in any sample (i.e. no duplicates). This is __much__ faster than 
+    # calling unique(do.call("c", smt)) because most m-tuples are not are not 
+    # sample-specific (i.e. unique) and unique(MTuples) is currently very slow 
+    # if MTuples contains many elements with a large number of duplicates.
+    smt <- lapply(x, '[[', 'mtuples')
+    m <- sapply(smt, getM)
+    if (!.zero_range(m)) {
+      stop("All files must contain the same sized m-tuples.")
+    }
+    m <- m[1L]
+    i <- which.max(sapply(smt, length))
+    # Compare all other samples against i
+    u <- bplapply(seq_along(smt)[-i], function(ii, x, y){
+      Rle(!overlapsAny(x[[ii]], y, type = 'equal'))
+    }, x = smt, y = smt[[i]])
+    noti <- unique(do.call("c", mapply('[', smt[-i], u)))
+    mt <- sort(c(smt[[i]], noti))
+    seqinfo(mt) <- seqinfo
   
-  # Find overlaps between smt and mt for each sample.
-  ol <- bplapply(smt, function(smt, mt) {
-    findOverlaps(smt, mt, type = 'equal')
-  }, mt = mt)
+    # Find overlaps between smt and mt for each sample.
+    ol <- bplapply(smt, function(smt, mt) {
+      findOverlaps(smt, mt, type = 'equal')
+    }, mt = mt)
   
-  # Construct assays
-  counts <- lapply(x, '[[', 'counts')
-  an <- names(counts[[1]])
-  nmt <- length(mt)
-  x <- bplapply(an, function(an, counts, ol, nmt) {
-    mat <- matrix(NA_integer_, nrow = nmt, ncol = length(counts))
-    ri <- unlist(lapply(ol, subjectHits), use.names = FALSE)
-    ci <- rep(seq_along(counts), times = sapply(ol, queryLength))
-    mat[ri + (ci - 1) * nrow(mat)] <- unlist(lapply(counts, '[[', an), 
+    # Construct assays
+    counts <- lapply(x, '[[', 'counts')
+    an <- names(counts[[1]])
+    nmt <- length(mt)
+    x <- bplapply(an, function(an, counts, ol, nmt) {
+      mat <- matrix(NA_integer_, nrow = nmt, ncol = length(counts))
+      ri <- unlist(lapply(ol, subjectHits), use.names = FALSE)
+      ci <- rep(seq_along(counts), times = sapply(ol, queryLength))
+      mat[ri + (ci - 1) * nrow(mat)] <- unlist(lapply(counts, '[[', an), 
                                              use.names = FALSE)
-    return(mat)
-  }, counts = counts, ol = ol, nmt = nmt)
-  names(x) <- an
+      return(mat)
+    }, counts = counts, ol = ol, nmt = nmt)
+    names(x) <- an
+  } else{
+    # Construct rowData
+    mt <- x[[1]][['mtuples']]
+    m <- getM(mt)
+    # Construct assays
+    counts <- x[[1]][['counts']]
+    an <- names(counts)
+    nmt <- length(mt)
+    x <- lapply(counts, as.matrix)
+    names(x) <- an
+  }
   if (m == 1L) {
     class <- 'CoMeth1'
     assays <- c(x, list(EP = .EP(x), beta = .beta(x)))
   } else if (m == 2L) {
-    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)), LOR = list(.LOR(combined_data$counts)))
+    assays <- c(x, list(EP = .EP(x), LOR = .LOR(x)))
     class <- 'CoMeth2'
   } else{
-    assays <- c(combined_data$counts, list(EP = .EP(combined_data$counts)))
-    class <- 'CoMethPlus'
+    assays <- c(x, list(EP = .EP(x)))
+    class <- 'CoMeth3Plus'
   }
   
   new(class, SummarizedExperiment(assays = assays, rowData = mt, 
