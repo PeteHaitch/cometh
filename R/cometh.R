@@ -7,8 +7,11 @@
 #' Please refer to the vignettes to see how to use the  \pkg{cometh} package.
 #'
 #' @docType package
-#' @name cometh
+#' @name cometh-package
 #' @useDynLib cometh
 #' @import Biobase S4Vectors IRanges GenomeInfoDb GenomicRanges Rcpp   
+#' @importFrom BiocParallel bplapply
+#' @importFrom data.table fread
+#' @importFrom R.utils gunzip
 #' @references TODO
 NULL

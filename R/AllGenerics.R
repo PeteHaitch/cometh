@@ -21,6 +21,7 @@ setGeneric("getPos",  function(x, ...) {
 ### IPD
 ###
 
+#' Get the intra-pair distance(s) of m-tuples
 #' @export
 setGeneric("getIPD", function(x, ...) {
   standardGeneric("getIPD")
@@ -45,6 +46,7 @@ setGeneric("getCoverage", function(x, ...) {
 ### getM
 ###
 
+#' Get the m of m-tuples
 #' @export
 setGeneric("getM", function(x, ...) {
   standardGeneric("getM")
@@ -54,9 +56,10 @@ setGeneric("getM", function(x, ...) {
 ### getMethylationType
 ###
 
+#' Get the methylation type of a \code{CoMeth}
 #' @export
 setGeneric("getMethylationType",function(x, ...) { 
   standardGeneric("getMethylationType")
 })
 
-## TODO: Why isn't sampleNames and sampleNames<- working?
+## TODO: Why aren't sampleNames and sampleNames<- working?

@@ -26,15 +26,15 @@ test_that("MTuples constructor returns an MTuples object when m >= 3", {
 context("MTuples validity")
 
 test_that("Ensure m-tuple positions are checked to be sorted", {
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(10:20, 15:5), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:10, 21:30, 11:20), ncol = 3)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
-  expect_that(MTuples('chr1', pos = matrix(c(1, 1), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm')))) # Test for GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(10:20, 15:5), ncol = 2)), throws_error(paste0("positions within each 2-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), '.')))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:10, 21:30, 11:20), ncol = 3)), throws_error("positions within each 3-tuple must be sorted in strictly increasing order"))
+  expect_that(MTuples('chr1', pos = matrix(c(1, 1), ncol = 2)), throws_error("positions within each 2-tuple must be sorted in strictly increasing order")) # Test for GitHub issue #8 (https://github.com/PeteHaitch/cometh/issues/8)
 })
 
 test_that("Ensure m-tuples positions are checked to be all positive", {
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(-1:10), ncol = 1)), throws_error("positions in each m-tuple must be positive integers"))
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8), ncol = 2)), throws_error(paste0("positions in each m-tuple must be sorted in strictly increasing order, i.e. ", sQuote('pos1'), " < ", sQuote('pos2'), " < ", sQuote('...'), " < ", sQuote('posm'))))
-  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8, 17:30), ncol = 3)), throws_error("positions in each m-tuple must be positive integers"))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(-1:10), ncol = 1)), throws_error(paste0("Some values in ", sQuote('pos'), " are negative.")))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8), ncol = 2)), throws_error(paste0("Some values in ", sQuote('pos'), " are negative.")))
+  expect_that(MTuples(seqnames = 'chr1', pos = matrix(c(1:15, -8, 17:30), ncol = 3)), throws_error(paste0("Some values in ", sQuote('pos'), " are negative.")))
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

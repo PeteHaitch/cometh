@@ -98,7 +98,7 @@ setMethod("show", "MethylationLociSet", function(object) {
 ### makeMLS
 ###
 
-#' Make a MethylationLociSet for a type of methylation and a reference genome.
+#' Make a MethylationLociSet for a methylation type and a reference genome.
 #' 
 #' Construct an object to store the location of all methylation loci of the 
 #' given type in a genome sequence. For example, find all CpGs in the human 

@@ -8,6 +8,7 @@
 ## AWAITING RESPONSE FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005549.html) THAT IS RELEVANT TO THESE METHOD DEFINITIONS
 ## REPLY FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html): Can remove this method once I have updated to GenomicRanges >= 1.15.46 (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html).
 ## TODO: Once this change is made, update DESCRIPTION with requiriment of GenomicRanges >= 1.15.46.
+## TODO: Refinement for ciruclar chromosomes
 
 ## There is a specially defined method for findOverlaps when both the query and the subject are MTuples objects.
 ## This is to allow for "exact" matching between MTuples.
@@ -51,7 +52,7 @@ setMethod("findOverlaps",
                 ## The internal function .findIdentical.MTuples() hasn't been tested with circular chromosomes.
                 seqinfo <- merge(seqinfo(query), seqinfo(subject))
                 if (isTRUE(any(isCircular(seqinfo)))) {
-                  stop("Cannot handle circular chromosomes.")
+                  warning("No special handling of circular chromosomes.")
                 }
               
                 ## If type is 'equal' and m >= 3 then use the internal function .findIdentical.MTuples().

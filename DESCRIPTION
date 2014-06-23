@@ -1,7 +1,7 @@
 Package: cometh
 Type: Package
 Title: Analyse, manage and visualise co-methylation data.
-Version: 0.2
+Version: 0.2.1
 Date: 2014-02-05
 Author: Peter Hickey <peter.hickey@gmail.com>
 Maintainer: Peter Hickey <peter.hickey@gmail.com>
@@ -21,7 +21,10 @@ Imports:
     IRanges,
     GenomeInfoDb,
     GenomicRanges,
-    Rcpp
+    Rcpp,
+    BiocParallel,
+    data.table,
+    R.utils
 Suggests:
     testthat,
     knitr,
@@ -40,10 +43,10 @@ Collate:
     'betaCor_NILGeneral.R'
     'cometh.R'
     'findOverlaps-methods.R'
-    'fread.comethylation.R'
     'generalNILVP.R'
     'methods-BetaCor-class.R'
     'methods-CoMeth-class.R'
     'methods-MTuples-class.R'
     'methods-MethylationLociSet-class.R'
+    'read.comethylation.R'
     'read.mbias.R'

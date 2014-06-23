@@ -7,7 +7,7 @@
 ### though the functions have roxygen2 tags.
 ### =========================================================================
 
-#' Check whether all elements of a numeric vector are identical (within machine precision)
+#' Check whether all elements of a numeric vector are identical (within machine precision).
 #' @param x a numeric vector.
 # 
 #' @return TRUE if all elements of the vector are identical (within machine 
@@ -33,7 +33,7 @@
 }
 
 ## TODO: Check documentation and re-write as necessary.
-#' An internal function used when constructing/combining CoMeth objects
+#' An internal function used when constructing/combining \code{CoMeth} objects.
 #' 
 #' Combine list-wise data into matrix-like data whilst taking care of common and sample-specific m-tuples, i.e. filling in NA for 'counts' when a sample doesn't have any observations for that m-tuple. 
 #' 
@@ -134,7 +134,7 @@
   return(tuples_hits)
 }
 
-#' Make m-tuple names
+#' Make methylation pattern names at m-tuples.
 #'
 #' This helper function constructs m-tuple names in the correct (alphabetical) order for a given value of m
 #' @param m The size of the m-tuple. Must be an int.
@@ -159,7 +159,7 @@
 ## TOOD: Test
 #' @export
 #' @keywords internal
-.EP <- function(x){
+.EP <- function(x) {
   p <- lapply(X = x, FUN = function(xx, y){
     xx / y
   }, y = Reduce(x = x, '+'))
@@ -169,6 +169,7 @@
 }
 
 ## TODO: Document
+#' Compute beta-values.
 #' @export
 #' @keywords internal
 .beta <- function(x){
