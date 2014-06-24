@@ -1,4 +1,4 @@
-## TODO: Remove dependency on R.utils::gunzip
+## TODO: Remove dependency on R.utils::gunzip and improve gunzipping
 ## TODO: Add bzip support.
 ## TODO: Profile.
 ## TODO: Add offset as a parameter (which is a parameter of .LOR)?
@@ -65,14 +65,25 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   # Read in files and return as MTuples plus matrix of counts
   x <- bplapply(files, function(file, verbose) {
     if (grepl("\\.gz$", file)){
-      file <- gunzip(file, temporary = TRUE, remove = FALSE)
+      file <- gunzip(file, remove = FALSE)
+      file_to_remove <- file
     } else if (grepl("\\.bz2$", file)){
       stop("Sorry, can't handle ", sQuote('bzip2'), " compressed files.")
+      # TODO: Uncomment once I have a way to deal with bzip files
+      # file <- bzip(file)
+      #file_to_remove <- file
     } else {
       # Nothing to do!
+      file_to_remove <- NULL
     }
     
-    tsv <- fread(file, sep = '\t', header = TRUE, verbose = verbose)
+    tsv <- fread(file, header = TRUE, verbose = verbose)
+    # Remove the gunzipped file
+    if (!is.null(file_to_remove)) {
+      unlink(file_to_remove)
+    }
+    
+    # Return as a list of MTuples and counts (as matrix).
     val <- list(mtuples = MTuples(seqnames = tsv[, chr], strand = tsv[, strand], 
                                   pos = as.matrix(tsv[, grep('^pos',names(tsv)), 
                                                       with = FALSE])),
