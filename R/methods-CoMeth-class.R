@@ -59,7 +59,6 @@ setMethod("sampleNames<-",
                    object
                    })
 
-
 #' @include AllGenerics.R
 setMethod("getM", "CoMeth", function(x) {
   getM(rowData(x))

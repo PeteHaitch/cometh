@@ -2,6 +2,7 @@
 ## TODO: Add bzip support.
 ## TODO: Profile.
 ## TODO: Add offset as a parameter (which is a parameter of .LOR)?
+## TODO: Add some output, e.g. "Reading files", "Making MTuples", and timing?
 
 #' Read \code{tsv} output files from \code{comethylation} software.
 #'
@@ -38,6 +39,8 @@
 read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
                                 verbose = FALSE) {
   
+  MAX_VEC_LENGTH <- 2^31 - 1
+  
   # Check there is a unique sample_name for each filename
   if (length(sample_names) != length(files) | 
         length(sample_names) != length(unique(sample_names))) {
@@ -63,6 +66,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   }
   
   # Read in files and return as MTuples plus matrix of counts
+  print("Reading files...")
   x <- bplapply(files, function(file, verbose) {
     if (grepl("\\.gz$", file)){
       file <- gunzip(file, remove = FALSE)
@@ -94,6 +98,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   }, verbose = verbose)
   
   if (length(sample_names) > 1) {
+    print("Combining m-tuples...")
     # If there are multiple samples/files then need to combine these.
     # Compare all sample m-tuples (smt) against the sample with the most 
     # m-tuples (i). Create a list of any putative sample-specific m-tuples and 
@@ -126,17 +131,43 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
     }, mt = mt)
   
     # Construct assays
+    print("Combining assays...")
     counts <- lapply(x, '[[', 'counts')
     an <- names(counts[[1]])
     nmt <- length(mt)
-    x <- bplapply(an, function(an, counts, ol, nmt) {
+    
+    ## TODO: Figure out why I can't parallelise this.
+#     if ((nmt * length(counts)) > MAX_VEC_LENGTH) {
+#       cat(paste0("Sorry, cannot run in parallel with matrices containing > ", 
+#             MAX_VEC_LENGTH, " elements.\nReverting to serial processing; this", 
+#             " may take some time as a result..."))
+#       x <- lapply(an, function(an, counts, ol, nmt) {
+#         mat <- matrix(NA_integer_, nrow = nmt, ncol = length(counts))
+#         ri <- unlist(lapply(ol, subjectHits), use.names = FALSE)
+#         ci <- rep(seq_along(counts), times = sapply(ol, queryLength))
+#         mat[ri + (ci - 1) * nrow(mat)] <- unlist(lapply(counts, '[[', an), 
+#                                                  use.names = FALSE)
+#         return(mat)
+#       }, counts = counts, ol = ol, nmt = nmt)
+#     } else {
+#       x <- bplapply(an, function(an, counts, ol, nmt) {
+#         mat <- matrix(NA_integer_, nrow = nmt, ncol = length(counts))
+#         ri <- unlist(lapply(ol, subjectHits), use.names = FALSE)
+#         ci <- rep(seq_along(counts), times = sapply(ol, queryLength))
+#         mat[ri + (ci - 1) * nrow(mat)] <- unlist(lapply(counts, '[[', an), 
+#                                                use.names = FALSE)
+#         return(mat)
+#       }, counts = counts, ol = ol, nmt = nmt)
+#     }
+    x <- lapply(an, function(an, counts, ol, nmt) {
       mat <- matrix(NA_integer_, nrow = nmt, ncol = length(counts))
       ri <- unlist(lapply(ol, subjectHits), use.names = FALSE)
       ci <- rep(seq_along(counts), times = sapply(ol, queryLength))
       mat[ri + (ci - 1) * nrow(mat)] <- unlist(lapply(counts, '[[', an), 
-                                             use.names = FALSE)
+                                                   use.names = FALSE)
       return(mat)
-    }, counts = counts, ol = ol, nmt = nmt)
+      }, counts = counts, ol = ol, nmt = nmt)
+
     names(x) <- an
   } else{
     # Construct rowData
@@ -149,6 +180,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
     x <- lapply(counts, as.matrix)
     names(x) <- an
   }
+  
   if (m == 1L) {
     class <- 'CoMeth1'
     assays <- c(x, list(EP = .EP(x), beta = .beta(x)))
@@ -159,7 +191,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
     assays <- c(x, list(EP = .EP(x)))
     class <- 'CoMeth3Plus'
   }
-  
+  print("Creating CoMeth object...")
   new(class, SummarizedExperiment(assays = assays, rowData = mt, 
                                   colData = colData, verbose = verbose))
 }
