@@ -47,7 +47,7 @@ interest. Row names, if present, become the row names of the \code{CoMeth}.
 The length of the \code{CoMeth} must equal the number of rows of the
 matrices in assays.}
 
-\item{colData}{A \code{\link[GenomicRanegs]{DataFrame}} describing the samples.
+\item{colData}{A \code{\link[GenomicRanges]{DataFrame}} describing the samples.
 Row names, which are required, become the column names of the \code{CoMeth}.
 See below for additional details.}
 
@@ -111,7 +111,7 @@ A \code{CoMeth} object uses an \code{\link{MTuples}} object in the
 \code{GenomicRangesList} object.
 
 Furthermore, the \code{MTuples} object must include
-\code{\link[GenomicRanges]{Seqinfo}} of the reference genome. This
+\code{\link[GenomeInfoDb]{Seqinfo}} of the reference genome. This
 "reference genome" can accommodate a spiked-in unmethylated genome (normally
 lambda phage) that is commonly used as a control in bisulfite-sequencing
 experiments.}
@@ -124,9 +124,7 @@ namely \code{M} and \code{U}; there are \eqn{2^2 = 4} possible methylation
 patterns at 2-tuples, namely \code{MM}, \code{MU}, \code{UM} and \code{UU};
 there are \eqn{2^3} possible patterns at 3-tuples, namely \code{MMM}, ...,
 \code{'UUU'}. The \code{CoMeth} class enforces non-negative integer values
-in these "counts" assays. The assays also include the \emph{epipolymorphism},
-\code{EP}, of each each m-tuple within each sample, which is defined in
-Landan et al. (2012). The assays must be a \code{\link[IRanges]{SimpleList}}.
+in these "counts" assays. The assays must be a \code{\link[IRanges]{SimpleList}}.
 
 There are is an additional assay for each of the \code{CoMeth1} and
 \code{CoMeth2} subclasses; the assays of a \code{CoMeth1} object also
@@ -195,11 +193,6 @@ cat("TODO")
 \references{
 See \url{http://www.github.com/PeteHaitch/comethylation} for the
 \code{comethylation} Python software.
-
-See Landan, G. et al. Epigenetic polymorphism and the stochastic
-formation of differentially methylated regions in normal and cancerous
-tissues. Nat Genet 44, 1207–1214 (2012) for a description and definition of
-\emph{epipolymorphism} \url{doi:10.1038/ng.2442}.
 }
 \seealso{
 \code{\link{read.comethylation}} for a function to read in the

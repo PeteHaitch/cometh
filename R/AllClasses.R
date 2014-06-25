@@ -392,7 +392,7 @@ setValidity("CoMeth", function(object) {
 #' interest. Row names, if present, become the row names of the \code{CoMeth}. 
 #' The length of the \code{CoMeth} must equal the number of rows of the 
 #' matrices in assays.
-#' @param colData A \code{\link[GenomicRanegs]{DataFrame}} describing the samples. 
+#' @param colData A \code{\link[GenomicRanges]{DataFrame}} describing the samples. 
 #' Row names, which are required, become the column names of the \code{CoMeth}. 
 #' See below for additional details.
 #' @param exptData An optional \code{\link[IRanges]{SimpleList}} of arbitrary 
@@ -412,7 +412,7 @@ setValidity("CoMeth", function(object) {
 #' \code{GenomicRangesList} object.
 #' 
 #' Furthermore, the \code{MTuples} object must include 
-#' \code{\link[GenomicRanges]{Seqinfo}} of the reference genome. This 
+#' \code{\link[GenomeInfoDb]{Seqinfo}} of the reference genome. This 
 #' "reference genome" can accommodate a spiked-in unmethylated genome (normally 
 #' lambda phage) that is commonly used as a control in bisulfite-sequencing 
 #' experiments.}

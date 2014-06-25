@@ -113,7 +113,7 @@ setMethod("show", "MethylationLociSet", function(object) {
 #' @param ... Other arguments passed to \code{\link{[Biostrings]matchPattern}}.
 #' 
 #' @note This is basically a wrapper around the 
-#' \code{\link{[Biostrings]matchPattern}} function, where 
+#' \code{\link[Biostrings]{matchPattern}} function, where 
 #' \code{methylation_type} = \code{pattern} and \code{bsgenome} = 
 #' \code{subject}.
 #' \emph{WARNING:} This will use a considerable amount of memory and take some 

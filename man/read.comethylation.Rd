@@ -4,24 +4,34 @@
 \title{Read \code{tsv} output files from \code{comethylation} software.}
 \usage{
 read.comethylation(files, sample_names, methylation_types, seqinfo,
-  verbose = FALSE)
+  colData = DataFrame(), exptData = SimpleList(), verbose = FALSE)
 }
 \arguments{
 \item{files}{The \code{.tsv} files created by \code{comethylation}. These
-files may be compressed with gzip or bzip2.}
+files may be compressed with gzip or bzip2 (not yet implemented). All files
+must contain the same sized m-tuples.}
 
-\item{sample_names}{The sample names of each file.}
+\item{sample_names}{The sample names of each file. Must be unique.}
 
 \item{methylation_types}{A character vector with the type of methylation
-type of each file.}
+type of each file. It is recommended, although not enforced, that all samples
+have the same methylation type.}
+
+\item{seqinfo}{A \code{\link[GenomicRanges]{Seqinfo}} object containing
+information about the reference genome of the sample.}
+
+\item{colData}{A \code{\link[GenomicRanegs]{DataFrame}} describing the samples.
+Row names, which are required, become the column names of the \code{CoMeth}.
+Must not include a column named \code{methylation_type} andrRow names must
+be identical to \code{sample_names}.}
+
+\item{exptData}{An optional \code{\link[IRanges]{SimpleList}} of arbitrary
+content describing the overall experiment.}
 
 \item{verbose}{logical Default \code{FALSE}. If \code{TRUE},
 \code{read.comethylation()} will report some output when reading the files
 with \code{\link[data.table]{fread}} and may produce some output when
 constructing the \code{CoMeth} object.}
-
-\item{seqinfo}{A \code{\link[GenomicRanges]{Seqinfo}} object containing
-information about the reference genome of the sample.}
 }
 \value{
 A \code{\link{CoMeth}} object

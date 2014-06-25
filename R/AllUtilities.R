@@ -255,7 +255,7 @@
 #' @param irl A list of \code{\link[IRanges]{IRanges}} objects.
 #' @param strand A character vector of length 1. The strand of all methylation 
 #' loci in \code{irl}.
-#' @param seqinfo The \code{\link[GenomicRanges]{Seqinfo}} of all methylation 
+#' @param seqinfo The \code{\link[GenomeInfoDb]{Seqinfo}} of all methylation 
 #' loci in \code{irl}.
 #' 
 #' @param Note, \code{.irl2gr} differs from calling 
@@ -264,7 +264,7 @@
 #' to specify the strand rather than simply setting it to \code{*}, it makes 
 #' all ranges of width = 1, with the start being the cytosine in the relevant 
 #' strand, and it requires the user to specify the 
-#' \code{\link[GenomicRanges]{Seqinfo}}.
+#' \code{\link[GenomeInfoDb]{Seqinfo}}.
 #' @export
 #' 
 .irl2gr <- function(irl, strand, seqinfo) {

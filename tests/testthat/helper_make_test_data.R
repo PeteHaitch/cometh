@@ -38,11 +38,11 @@ make_MTuples_or_CoMeth_data <- function(m, n, s, sim_counts = TRUE) {
         c('M', 'U')
         }))))
     if (m == 1L) {
-      assays <- c(x, list(EP = .EP(x), beta = .beta(x)))
+      assays <- c(x, list(beta = .beta(x)))
     } else if (m == 2L) {
-      assays <- c(x, list(EP = .EP(x), LOR = .LOR(x)))
+      assays <- c(x, list(LOR = .LOR(x)))
     } else{
-      assays <- c(x, list(EP = .EP(x)))
+      assays <- x
     }
     
     # colData
@@ -114,8 +114,7 @@ make_CoMeth1_data <- function(mls, f, s) {
   U <- cbind(sapply(val, function(x) x$U))
   colnames(U) <- paste0('s', seq_len(s))
   beta <- .beta(list(M = M, U = U))
-  EP <- .EP(list(M = M, U = U))
-  assays = SimpleList(M = M, U = U, beta = beta, EP = EP)
+  assays = SimpleList(M = M, U = U, beta = beta)
   cd <- DataFrame(methylation_type = rep('CG', s))
   rownames(cd) <- paste0('s', seq_len(s))
   

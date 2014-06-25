@@ -26,7 +26,7 @@ reference genome (hg19). The returned object is a
 }
 \note{
 This is basically a wrapper around the
-\code{\link{[Biostrings]matchPattern}} function, where
+\code{\link[Biostrings]{matchPattern}} function, where
 \code{methylation_type} = \code{pattern} and \code{bsgenome} =
 \code{subject}.
 \emph{WARNING:} This will use a considerable amount of memory and take some
