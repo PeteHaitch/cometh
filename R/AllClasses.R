@@ -323,10 +323,10 @@ setValidity("CoMeth", function(object) {
     m <- ncol(object@rowData@extraPos) + 2L
   }
   
-  # Check that object has 'MM..M', ..., 'UU..U', and 'EP' assays names
-  if (!all(c(.make_m_tuple_names(m), "EP") %in% names(object@assays$data))){
+  # Check that object has 'MM..M', ..., 'UU..U' assays names
+  if (!all(c(.make_m_tuple_names(m)) %in% names(object@assays$data))){
     msg <- validMsg(msg, paste0("assay names must include: ", 
-                                paste0(sQuote(c(.make_m_tuple_names(m), "EP")), 
+                                paste0(sQuote(c(.make_m_tuple_names(m))), 
                                        collapse = ", "), "."))
   }
 }
@@ -425,9 +425,7 @@ setValidity("CoMeth", function(object) {
 #' patterns at 2-tuples, namely \code{MM}, \code{MU}, \code{UM} and \code{UU}; 
 #' there are \eqn{2^3} possible patterns at 3-tuples, namely \code{MMM}, ..., 
 #' \code{'UUU'}. The \code{CoMeth} class enforces non-negative integer values 
-#' in these "counts" assays. The assays also include the \emph{epipolymorphism}, 
-#' \code{EP}, of each each m-tuple within each sample, which is defined in 
-#' Landan et al. (2012). The assays must be a \code{\link[IRanges]{SimpleList}}.
+#' in these "counts" assays. The assays must be a \code{\link[IRanges]{SimpleList}}.
 #' 
 #' There are is an additional assay for each of the \code{CoMeth1} and 
 #' \code{CoMeth2} subclasses; the assays of a \code{CoMeth1} object also 
@@ -481,10 +479,6 @@ setValidity("CoMeth", function(object) {
 #'  
 #' @references See \url{http://www.github.com/PeteHaitch/comethylation} for the 
 #' \code{comethylation} Python software.
-#' @references See Landan, G. et al. Epigenetic polymorphism and the stochastic 
-#' formation of differentially methylated regions in normal and cancerous 
-#' tissues. Nat Genet 44, 1207–1214 (2012) for a description and definition of 
-#' \emph{epipolymorphism} \url{doi:10.1038/ng.2442}.
 #' 
 #' @seealso \code{\link{read.comethylation}} for a function to read in the 
 #' \code{comethylation} output \code{.tsv} file(s) and construct the 
@@ -524,7 +518,7 @@ CoMeth <- function(assays = SimpleList(), rowData = MTuples(),
 ### CoMeth1
 ###
 ### A concrete subclass of CoMeth for storing methylation patterns at 1-tuples.
-### CoMeth1 should have 'M', 'U', 'EP' and 'beta' as assays.
+### CoMeth1 should have 'M', 'U' and 'beta' as assays.
 
 setClass("CoMeth1", 
          contains = "CoMeth")
@@ -553,10 +547,10 @@ setValidity("CoMeth1", function(object) {
   } 
 
   # Check assay names 
-  # M, U and EP are already checked by validity method for CoMeth 
+  # M, and U are already checked by validity method for CoMeth 
   # VIRTUAL class
   assay_names <- names(object@assays$data@listData)
-  extra_assay_names <- assay_names[-which(assay_names %in% c('M', 'U', 'EP'))] 
+  extra_assay_names <- assay_names[-which(assay_names %in% c('M', 'U'))] 
   if (!extra_assay_names %in% "beta"){
     msg <- validMsg(msg, 
                     paste0(sQuote("CoMeth1"), 
@@ -600,7 +594,7 @@ setAs("CoMeth1", "SummarizedExperiment",
 ### CoMeth2
 ###
 ### A concrete subclass of CoMeth for storing methylation patterns at 2-tuples.
-### CoMeth2 should have 'MM', 'MU', 'UM', 'UU', 'EP' and 'LOR' as assays.
+### CoMeth2 should have 'MM', 'MU', 'UM', 'UU' and 'LOR' as assays.
 
 setClass("CoMeth2", 
          contains = "CoMeth")
@@ -629,11 +623,11 @@ setValidity("CoMeth2", function(object) {
   } 
   
   # Check assay names 
-  # MM, MU, UM, UU and EP are already checked by validity method for CoMeth 
+  # MM, MU, UM, and UU are already checked by validity method for CoMeth 
   # VIRTUAL class
   assay_names <- names(object@assays$data@listData)
   extra_assay_names <- assay_names[-which(assay_names %in% 
-                                            c('MM', 'MU', 'UM', 'UU', 'EP'))] 
+                                            c('MM', 'MU', 'UM', 'UU'))] 
   if (!extra_assay_names %in% "LOR"){
     msg <- validMsg(msg, 
                     paste0(sQuote("CoMeth2"), 
