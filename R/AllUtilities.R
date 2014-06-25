@@ -128,8 +128,17 @@
     findOverlaps(query = GRanges(seqnames = q_seqnames, ranges = IRanges(start = q_pos[, i], end = q_pos[, i + 1]), strand = q_strand), subject = GRanges(seqnames = s_seqnames, ranges = IRanges(start = s_pos[, i], end = s_pos[, i + 1]), strand = s_strand), maxgap = 0L, minoverlap = 1L, type = "equal", select = select)
   }, q_seqnames = seqnames(query), s_seqnames = seqnames(subject), q_strand = strand(query), s_strand = strand(subject), q_pos = getPos(query), s_pos = getPos(subject))
   
-  ## Intersect the Hits objects
-  tuples_hits <- Reduce(intersect, pair_hits)
+  # Intersect the Hits objects (if select == 'all') or the integer vectors 
+  # (if select != 'all').
+  if (select == 'all') {
+    tuples_hits <- Reduce(intersect, pair_hits)
+  } else {
+    tuples_hits <- Reduce(function(x, y) {
+      # Note can't use base::intersect because it removes NAs and need to be 
+      # sure not to remove NAs (hence incomparables = NA).
+      unique(y[match(x, y, NA_integer_)], incomparables = NA)
+    }, pair_hits)
+  }
   
   return(tuples_hits)
 }
@@ -157,6 +166,10 @@
 
 ## TODO: Document
 ## TOOD: Test
+#' @references See Landan, G. et al. Epigenetic polymorphism and the stochastic 
+#' formation of differentially methylated regions in normal and cancerous 
+#' tissues. Nat Genet 44, 1207–1214 (2012) for a description and definition of 
+#' \emph{epipolymorphism} \url{doi:10.1038/ng.2442}.
 #' @export
 #' @keywords internal
 .EP <- function(x) {

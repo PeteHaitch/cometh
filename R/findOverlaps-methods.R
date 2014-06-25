@@ -4,6 +4,15 @@
 
 ## TODO: Replace .local() within setMethod calls with a separate (better named) function and then call that function from setMethod
 ## TODO: What happens if findOverlaps (type = 'equal') with m-tuples (m > 2) when positions are identical but strands differ, e.g. '+' vs. '+' (should be a match) or '+' vs. '-' (should not be a match).
+## TODO: Define an overlapsAny method for MTuples - the GRanges method won't 
+## work as intended because it uses "select = 'first'" when really we want 
+## overlapsAny(MTuples, MTuples) to be identical to  
+## countOverlaps(MTuples, MTuples, type = 'equal', select = 'all') != 0. Need to
+## think about what we want if type != 'equal'.
+## TODO: Really want a better method when m > 2; specifically, it should be 
+## possible to hash (chr:strand:pos1:...:posm) and do a fast match rather than 
+## using multiple calls to findOverlaps method for GRanges, which includes the 
+## overhead of constructing multiple GRanges.
 
 ## AWAITING RESPONSE FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005549.html) THAT IS RELEVANT TO THESE METHOD DEFINITIONS
 ## REPLY FROM BIOC-DEVEL (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html): Can remove this method once I have updated to GenomicRanges >= 1.15.46 (https://stat.ethz.ch/pipermail/bioc-devel/2014-April/005555.html).
