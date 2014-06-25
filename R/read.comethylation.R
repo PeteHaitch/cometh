@@ -1,9 +1,23 @@
+## TODO: Use a different delimiter to '.' when adding sample names to count 
+## names. Otherwise a sample name with '.' in it will break the code. Whatever 
+## delimiter I end up using, add a check that this delimiter is not present in 
+## any of the sample_names.
 ## TODO: Remove dependency on R.utils::gunzip and improve gunzipping and temp
 ## file handling.
 ## TODO: Add bzip support.
 ## TODO: Profile.
 ## TODO: Add offset as a parameter (which is a parameter of .LOR)?
 ## TODO: Add timing output?
+## TODO: Add min_cov option; only those m-tuples with sequencing coverage > 
+## min_cov will be retained. This will greatly reduce the object sizes, 
+## particularly for large m, and generally we are not interested in m-tuples 
+## with low coverage in any case. Perhaps the minimum coverage should be 
+## recorded in a slot of the CoMeth object.
+## TODO: See if assays can be stored as DataFrames of Rles and whether this is 
+## more efficient than matrices of integers.
+## TODO: Compute approximate memory usage.
+## TODO: Check that all files only contain either strand %in% '*' or strand 
+## %in% c('+', '-'); otherwise the resulting object is a bit of a mess.
 
 #' Read \code{tsv} output files from \code{comethylation} software.
 #'
@@ -151,7 +165,8 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
                                              value = TRUE),
                                         split = '\\.'), '[[', 1))
   assays <- lapply(assay_names, function(an, mtsv) {
-    i <- grep(pattern = an, x = names(mtsv), value = TRUE)
+    pat <- paste0('^', an, '.')
+    i <- grep(pattern = pat, x = names(mtsv), value = TRUE)
     sn <- sapply(strsplit(x = i, split = '\\.'), '[[', 2)
     as.matrix(setnames(mtsv[, i, with = FALSE], sn))
   }, mtsv = mtsv)
