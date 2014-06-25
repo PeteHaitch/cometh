@@ -1,4 +1,5 @@
-## TODO: Remove dependency on R.utils::gunzip and improve gunzipping
+## TODO: Remove dependency on R.utils::gunzip and improve gunzipping and temp
+## file handling.
 ## TODO: Add bzip support.
 ## TODO: Profile.
 ## TODO: Add offset as a parameter (which is a parameter of .LOR)?
@@ -63,7 +64,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   if(!.valid_methylation_type(methylation_type)) {
     stop("Invalid methylation type.")
   }
-  if (!identical(dim(colData), c(0L, 0L))) {
+  if (identical(dim(colData), c(0L, 0L))) {
     colData <- DataFrame(methylation_type = 
                            rep(methylation_type, length(sample_names)), 
                          row.names = sample_names)
@@ -100,21 +101,22 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
         # file_to_remove <- file
       } else {
         # Nothing to do!
-        file_to_remove <- NULL
+        file_to_remove <- NA
       }
       return(data.frame(file = file, file_to_remove = file_to_remove, 
                         stringsAsFactors = FALSE))
     }))
   } else{
     # No files require decompressing
-    x <- data.frame(file = file, file_to_remove = rep(NULL, length(files)))
+    x <- data.frame(file = files, file_to_remove = rep(NA, length(files)), 
+                    stringsAsFactors = FALSE)
   } 
   
   # Read in file(s) serially and, if more than one file, merge these files.
   if (length(files) == 1L) {
-    print(paste0("Reading file ", files[1], " ..."))
+    print(paste0("Reading file ", files[1]))
   } else {
-    print(paste0("Reading file ", files[1], " ..."))
+    print(paste0("Reading file ", files[1]))
   }
   mtsv <- fread(input = x$file[1], header = TRUE, verbose = verbose)
   keys <- c("chr", "strand", 
@@ -127,7 +129,7 @@ read.comethylation <- function(files, sample_names, methylation_types, seqinfo,
   rm(wn)
   if (length(files) > 1) {
     for (i in seq.int(from = 2, to = length(files), by = 1)) {
-      print(paste0("Reading and merging ", files[i], ' ...'))
+      print(paste0("Reading and merging ", files[i]))
       ## TODO: try-catch the merge in case files with different sized m-tuples
       ## are supplied by the user because the error message supplied by 
       ## merge is a bit hard to understand.
