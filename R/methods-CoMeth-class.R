@@ -263,13 +263,15 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #' Combine the counts (e.g. \code{M} and \code{U} in a \code{CoMeth1} object) 
 #' across strands. Only applicable if the methylation type is CG, which is 
 #' generally strand-symmetric, because all other methylation types are 
-#' strand-asymmetric.
+#' strand-asymmetric. 
 #' 
 #' @details
 #' This will only combine the counts and \strong{all other assays will be 
 #' removed}; the exceptions are for \code{CoMeth1} and \code{CoMeth2} objects, 
 #' which will have \code{beta} and \code{LOR} re-computed, respectively. The 
-#' strand of the combined m-tuples will be set to \code{*}.
+#' positions of all m-tuples will be with respect to the position of the 
+#' cytosine on the '+' strand, however, the strand of all m-tuples will be set 
+#' to \code{*}.
 #' 
 #' @param x A \code{CoMeth} object with \code{methylation_type == 'CG'}.
 #' @param sort A \code{logical(1)} indicating whether the resulting object 
@@ -311,8 +313,9 @@ combineStrands <- function(x, sort = TRUE) {
   plus_only <- subjectHits(plus_ol)[countQueryHits(ol) == 0]
   neg_only <- subjectHits(neg_ol)[countSubjectHits(ol) == 0]
   # Order is both, plus_only, neg_only
+  # neg_only m-tuples need to be shifted -1L (wrt '+' strand).
   rowData <- unstrand(c(y[[1]][queryHits(ol)], y[[1]][countQueryHits(ol) == 0], 
-          y[[2]][countSubjectHits(ol) == 0]))
+          shift(y[[2]][countSubjectHits(ol) == 0], shift = -1L)))
   ci <- grep(pattern = '^[MU]', x = names(assays(x)), value = TRUE)
   ## TODO: Is parallelisation worth it?
   both_assays <- lapply(assays(x)[ci], function(counts, ol) {

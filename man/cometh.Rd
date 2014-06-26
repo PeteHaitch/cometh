@@ -119,7 +119,9 @@ Compare \code{MTuples}.
 This will only combine the counts and \strong{all other assays will be
 removed}; the exceptions are for \code{CoMeth1} and \code{CoMeth2} objects,
 which will have \code{beta} and \code{LOR} re-computed, respectively. The
-strand of the combined m-tuples will be set to \code{*}.
+positions of all m-tuples will be with respect to the position of the
+cytosine on the '+' strand, however, the strand of all m-tuples will be set
+to \code{*}.
 }
 \section{Differences to \code{\link[GenomicRanges]{SummarizedExperiment}}}{
 
