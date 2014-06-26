@@ -255,6 +255,8 @@ setMethod("getCoverage", "CoMeth", function(x) {
 ## TODO: Add warnings if assays slot contains non-standard assays that these 
 ## will be removed.
 ## TODO: Should this be a function or a method?
+## TODO: Figure out where bplapply can be effectively (and safely) subbed in 
+## for lapply.
 #' Combine counts across strand.
 #' 
 #' @description 
@@ -313,17 +315,17 @@ combineStrands <- function(x, sort = TRUE) {
           y[[2]][countSubjectHits(ol) == 0]))
   ci <- grep(pattern = '^[MU]', x = names(assays(x)), value = TRUE)
   ## TODO: Is parallelisation worth it?
-  both_assays <- bplapply(assays(x)[ci], function(counts, ol) {
+  both_assays <- lapply(assays(x)[ci], function(counts, ol) {
     counts[queryHits(ol), , drop = FALSE] + 
       counts[subjectHits(ol), , drop = FALSE]
   }, ol = ol)
-  plus_assays <- bplapply(assays(x)[ci], function(counts, plus_only) {
+  plus_assays <- lapply(assays(x)[ci], function(counts, plus_only) {
     counts[plus_only, , drop = FALSE]
   }, plus_only = plus_only)
-  neg_assays <- bplapply(assays(x)[ci], function(counts, neg_only) {
+  neg_assays <- lapply(assays(x)[ci], function(counts, neg_only) {
     counts[neg_only, , drop = FALSE]
   }, neg_only = neg_only)
-  assays <- bpmapply(function(b, p, n) {
+  assays <- mapply(function(b, p, n) {
     rbind(b, p, n)
   }, b = both_assays, p = plus_assays, n = neg_assays, SIMPLIFY = FALSE)
   
