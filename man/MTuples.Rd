@@ -13,6 +13,7 @@
 \alias{getPos,MTuples-method}
 \alias{match,MTuples,MTuples-method}
 \alias{order,MTuples-method}
+\alias{shift,MTuples-method}
 \alias{sort,MTuples-method}
 \title{MTuples class and constructor}
 \usage{
@@ -41,6 +42,8 @@ anyDuplicated.MTuples(x, incomparables = FALSE, ...)
 \S4method{order}{MTuples}(..., na.last = TRUE, decreasing = FALSE)
 
 \S4method{sort}{MTuples}(x, decreasing = FALSE, ignore.strand = FALSE, by)
+
+\S4method{shift}{MTuples}(x, shift = 0L, use.names = TRUE)
 }
 \arguments{
 \item{seqnames}{\code{\link[IRanges]{Rle}} object, character vector, or
@@ -90,6 +93,17 @@ allowed sequence names and lengths (or \code{NA}) for each
 \item{na.last}{
     See \code{?base::\link[base]{order}} for a description of
     these arguments.
+  }
+
+\item{shift}{
+    An integer vector containing the shift information. Recycled as 
+    necessary so that each element corresponds to a range in \code{x}.
+    It can also be an \link{IntegerList} object if \code{x} is a
+    \link{RangesList} object.
+  }
+
+\item{use.names}{
+    \code{TRUE} or \code{FALSE}. Should names be preserved?
   }
 }
 \value{
