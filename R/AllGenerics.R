@@ -46,6 +46,7 @@ setGeneric("getIPD", function(x, ...) {
 #' and each row to an m-tuple.
 #' @include AllGenerics.R
 #' @rdname CoMeth
+#' @export
 setGeneric("getCoverage", function(x, ...) {
   standardGeneric("getCoverage")
 })
