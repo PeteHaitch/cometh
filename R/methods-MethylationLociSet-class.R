@@ -110,7 +110,7 @@ setMethod("show", "MethylationLociSet", function(object) {
 #' c("CG", "CHG") or c("CHG", "CG") for "CG/CHG" methylation.
 #' @param bsgenome A \code{\link[BSgenome]{BSgenome}} object of the reference
 #' genome.
-#' @param ... Other arguments passed to \code{\link{[Biostrings]matchPattern}}.
+#' @param ... Other arguments passed to \code{\link[Biostrings]{matchPattern}}.
 #' 
 #' @note This is basically a wrapper around the 
 #' \code{\link[Biostrings]{matchPattern}} function, where 

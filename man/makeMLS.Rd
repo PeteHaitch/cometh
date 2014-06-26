@@ -13,7 +13,7 @@ c("CG", "CHG") or c("CHG", "CG") for "CG/CHG" methylation.}
 \item{bsgenome}{A \code{\link[BSgenome]{BSgenome}} object of the reference
 genome.}
 
-\item{...}{Other arguments passed to \code{\link{[Biostrings]matchPattern}}.}
+\item{...}{Other arguments passed to \code{\link[Biostrings]{matchPattern}}.}
 }
 \value{
 A \link{MethylationLociSet} object.

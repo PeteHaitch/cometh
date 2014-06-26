@@ -3,6 +3,7 @@
 ### =========================================================================
 
 ## TODO: Should I define prototypes in class definitions?
+## TODO: Define MTuplesList; check split(MTuples) produces an MTuplesList.
 
 ### -------------------------------------------------------------------------
 ### MTuples 
@@ -392,7 +393,7 @@ setValidity("CoMeth", function(object) {
 #' interest. Row names, if present, become the row names of the \code{CoMeth}. 
 #' The length of the \code{CoMeth} must equal the number of rows of the 
 #' matrices in assays.
-#' @param colData A \code{\link[GenomicRanges]{DataFrame}} describing the samples. 
+#' @param colData A \code{\link[IRanges]{DataFrame}} describing the samples. 
 #' Row names, which are required, become the column names of the \code{CoMeth}. 
 #' See below for additional details.
 #' @param exptData An optional \code{\link[IRanges]{SimpleList}} of arbitrary 

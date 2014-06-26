@@ -35,8 +35,9 @@
 #' @param sample_names The sample names of each file. Must be unique.
 #' @param methylation_types A character vector with the type of methylation 
 #' type of each file. It is recommended, although not enforced, that all samples 
-#' have the same methylation type.
-#' @param seqinfo A \code{\link[GenomicRanges]{Seqinfo}} object containing 
+#' have the same methylation type. A sample with multiple methylation types 
+#' should have these separated by a forward-slash, for example, 'CG/CHG'. 
+#' @param seqinfo A \code{\link[GenomeInfoDb]{Seqinfo}} object containing 
 #' information about the reference genome of the sample.
 #' @param colData A \code{\link[GenomicRanegs]{DataFrame}} describing the samples. 
 #' Row names, which are required, become the column names of the \code{CoMeth}. 

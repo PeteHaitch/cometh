@@ -15,9 +15,10 @@ must contain the same sized m-tuples.}
 
 \item{methylation_types}{A character vector with the type of methylation
 type of each file. It is recommended, although not enforced, that all samples
-have the same methylation type.}
+have the same methylation type. A sample with multiple methylation types
+should have these separated by a forward-slash, for example, 'CG/CHG'.}
 
-\item{seqinfo}{A \code{\link[GenomicRanges]{Seqinfo}} object containing
+\item{seqinfo}{A \code{\link[GenomeInfoDb]{Seqinfo}} object containing
 information about the reference genome of the sample.}
 
 \item{colData}{A \code{\link[GenomicRanegs]{DataFrame}} describing the samples.
