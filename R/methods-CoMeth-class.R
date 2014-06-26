@@ -252,6 +252,105 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #   return(val)
 # })
 
+## TODO: Add warnings if assays slot contains non-standard assays that these 
+## will be removed.
+## TODO: Should this be a function or a method?
+#' Combine counts across strand.
+#' 
+#' @description 
+#' Combine the counts (e.g. \code{M} and \code{U} in a \code{CoMeth1} object) 
+#' across strands. Only applicable if the methylation type is CG, which is 
+#' generally strand-symmetric, because all other methylation types are 
+#' strand-asymmetric.
+#' 
+#' @details
+#' This will only combine the counts and \strong{all other assays will be 
+#' removed}; the exceptions are for \code{CoMeth1} and \code{CoMeth2} objects, 
+#' which will have \code{beta} and \code{LOR} re-computed, respectively. The 
+#' strand of the combined m-tuples will be set to \code{*}.
+#' 
+#' @param x A \code{CoMeth} object with \code{methylation_type == 'CG'}.
+#' @param sort A \code{logical(1)} indicating whether the resulting object 
+#' should be sorted (default: \code{TRUE}).
+#' 
+#' @return A \code{CoMeth} object of the same class as \code{x}. See details.
+#' 
+#' @export
+#' @rdname CoMeth
+combineStrands <- function(x, sort = TRUE) {
+  
+  if (!inherits(x = x, what = "CoMeth")) {
+    stop(sQuote('x'), " must inherit from a ", sQuote('CoMeth'), " object.")
+  }
+  
+  if (!all(getMethylationType(x) == 'CG')) {
+    stop("Can only combine counts across strands if the ", 
+         sQuote('methylation_type'), " of all samples is ", sQuote('CG'), ".")
+  }
+  
+  if (any(strand(x) == '*')) {
+    stop("Some of the counts have already been combined across strands (i.e. ", 
+         sQuote('any(strand(x) == '*')'), ' is TRUE).')
+  }
+  
+  # Split the rowData based on strand. 
+  # Throw away "*"-strand since there aren't any m-tuples on that strand.
+  ## TODO: split produces a GRangesList not an MTuplesList (which isn't yet 
+  ## defined). The main problem with this is that y doesn't "look" like a List 
+  ## of MTuples objects because it defers to the GRangesList "show" method.
+  print("Combining...")
+  y <- split(rowData(x), strand(rowData(x)))[1:2]
+  ol <- findOverlaps(y[[1]], shift(unstrand(y[[2]]), shift = -1L, 
+                                   use.names = FALSE), 
+                     type = 'equal')
+  plus_ol <- findOverlaps(y[[1]], rowData(x), type = 'equal')
+  neg_ol <- findOverlaps(y[[2]], rowData(x), type = 'equal')
+  # plus_only and neg_only are with respect to x.
+  plus_only <- subjectHits(plus_ol)[countQueryHits(ol) == 0]
+  neg_only <- subjectHits(neg_ol)[countSubjectHits(ol) == 0]
+  # Order is both, plus_only, neg_only
+  rowData <- unstrand(c(y[[1]][queryHits(ol)], y[[1]][countQueryHits(ol) == 0], 
+          y[[2]][countSubjectHits(ol) == 0]))
+  ci <- grep(pattern = '^[MU]', x = names(assays(x)), value = TRUE)
+  ## TODO: Is parallelisation worth it?
+  both_assays <- bplapply(assays(x)[ci], function(counts, ol) {
+    counts[queryHits(ol), , drop = FALSE] + 
+      counts[subjectHits(ol), , drop = FALSE]
+  }, ol = ol)
+  plus_assays <- bplapply(assays(x)[ci], function(counts, plus_only) {
+    counts[plus_only, , drop = FALSE]
+  }, plus_only = plus_only)
+  neg_assays <- bplapply(assays(x)[ci], function(counts, neg_only) {
+    counts[neg_only, , drop = FALSE]
+  }, neg_only = neg_only)
+  assays <- bpmapply(function(b, p, n) {
+    rbind(b, p, n)
+  }, b = both_assays, p = plus_assays, n = neg_assays, SIMPLIFY = FALSE)
+  
+  m <- getM(rowData)
+  if (m == 1L) {
+    class <- 'CoMeth1'
+    assays <- c(assays, list(beta = .beta(assays)))
+  } else if (m == 2L) {
+    class <- 'CoMeth2'
+    assays <- c(assays, list(LOR = .LOR(assays)))
+  } else{
+    class <- 'CoMeth3Plus'
+    # No need to update assays
+  }
+  
+  # Create the CoMeth object
+  print("Creating CoMeth object...")
+  z <- new(class, SummarizedExperiment(assays = assays, rowData = rowData, 
+                                       colData = colData(x), 
+                                       exptData = exptData(x), 
+                                       verbose = FALSE))
+  if (sort) {
+    z <- sort(z)
+  }
+  return(z)
+}
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Comparison
 ###
@@ -261,10 +360,11 @@ setMethod("getCoverage", "CoMeth", function(x) {
 #' Compare \code{MTuples}.
 #' @export
 #' @rdname CoMeth
-setMethod("compare", c("CoMeth", "CoMeth"), function(x, y){
+setMethod("compare", c("CoMeth", "CoMeth"), function(x, y) {
   
   if (getM(x) != getM(y)){
-    stop("Cannot ", sQuote('compare'), " ", sQuote('CoMeth'), " objects with different ", sQuote('m'))
+    stop("Cannot ", sQuote('compare'), " ", sQuote('CoMeth'), 
+         " objects with different ", sQuote('m'))
   }
   compare(rowData(x), rowData(y))
 })
@@ -276,7 +376,8 @@ setMethod("order", "CoMeth", function(..., na.last = TRUE, decreasing = FALSE){
   args <- list(...)
   
   if (!.zero_range(sapply(args, getM))){
-    stop("All ", sQuote('CoMeth'), " objects must have the same ", sQuote('m'), " value")
+    stop("All ", sQuote('CoMeth'), " objects must have the same ", sQuote('m'), 
+         " value")
   }
   
   args <- lapply(list(...), rowData)

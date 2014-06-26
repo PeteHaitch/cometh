@@ -6,6 +6,7 @@
 \alias{CoMeth1-class}
 \alias{CoMeth2-class}
 \alias{CoMeth3Plus-class}
+\alias{combineStrands}
 \alias{compare,CoMeth,CoMeth-method}
 \alias{getCoverage}
 \alias{getIPD,CoMeth-method}
@@ -29,6 +30,8 @@ getCoverage(x, ...)
 
 \S4method{sampleNames}{CoMeth,ANY}(object) <- value
 
+combineStrands(x, sort = TRUE)
+
 \S4method{compare}{CoMeth,CoMeth}(x, y)
 
 \S4method{order}{CoMeth}(..., na.last = TRUE, decreasing = FALSE)
@@ -47,7 +50,7 @@ interest. Row names, if present, become the row names of the \code{CoMeth}.
 The length of the \code{CoMeth} must equal the number of rows of the
 matrices in assays.}
 
-\item{colData}{A \code{\link[GenomicRanges]{DataFrame}} describing the samples.
+\item{colData}{A \code{\link[IRanges]{DataFrame}} describing the samples.
 Row names, which are required, become the column names of the \code{CoMeth}.
 See below for additional details.}
 
@@ -61,6 +64,11 @@ those of the \code{SimpleList} method.}
 coercion during construction should be printed.}
 
 \item{x}{A \code{\link{CoMeth}} object}
+
+\item{x}{A \code{CoMeth} object with \code{methylation_type == 'CG'}.}
+
+\item{sort}{A \code{logical(1)} indicating whether the resulting object
+should be sorted (default: \code{TRUE}).}
 
 \item{object}{Object, possibly derived from class \code{eSet}.}
 
@@ -81,6 +89,8 @@ depending on  the size of the m-tuples, i.e., the value of \eqn{m}.
 
 A numeric matrix. Each column of the matrix corresponds to a sample
 and each row to an m-tuple.
+
+A \code{CoMeth} object of the same class as \code{x}. See details.
 }
 \description{
 The \code{CoMeth} class is a virtual class extended from
@@ -98,7 +108,18 @@ Get the sample-specfic sequencing coverage of each m-tuple in a
 
 #
 
+Combine the counts (e.g. \code{M} and \code{U} in a \code{CoMeth1} object)
+across strands. Only applicable if the methylation type is CG, which is
+generally strand-symmetric, because all other methylation types are
+strand-asymmetric.
+
 Compare \code{MTuples}.
+}
+\details{
+This will only combine the counts and \strong{all other assays will be
+removed}; the exceptions are for \code{CoMeth1} and \code{CoMeth2} objects,
+which will have \code{beta} and \code{LOR} re-computed, respectively. The
+strand of the combined m-tuples will be set to \code{*}.
 }
 \section{Differences to \code{\link[GenomicRanges]{SummarizedExperiment}}}{
 
