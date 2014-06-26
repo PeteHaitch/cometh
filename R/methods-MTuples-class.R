@@ -441,6 +441,22 @@ showMTuples <- function(x, margin = "", print.seqlengths = FALSE){
   }
 }
 
-setMethod("show", "MTuples",function(object){
+setMethod("show", "MTuples", function(object) {
   showMTuples(object, margin="  ", print.seqlengths = TRUE)
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Intra range methods
+###
+
+## TODO: See ?"intra-range-methods" of GRanges for a full list of intra-range
+## methods I need to define. Most aren't defined for  MTuples but should 
+## produce an error message rather than calling the GRanges method and doing 
+## something odd.
+
+## TODO: This may not the most efficient method, cf. shift for GRanges.
+## TODO: Document in MTuples
+setMethod("shift", "MTuples", function(x, shift = 0L, use.names = TRUE) {
+  x@extraPos <- x@extraPos + shift
+  callNextMethod()
 })

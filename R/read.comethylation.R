@@ -14,7 +14,10 @@
 ## with low coverage in any case. Perhaps the minimum coverage should be 
 ## recorded in a slot of the CoMeth object.
 ## TODO: See if assays can be stored as DataFrames of Rles and whether this is 
-## more efficient than matrices of integers.
+## more efficient than matrices of integers. Doesn't save space for 
+## dense counts (e.g. MMMM counts are 4431 Mb for DataFrame-Rle vs. 4382.1 Mb 
+## for matrix for EPISCOPE data) nor for sparse counts (e.g. MUMU counts are 
+## 4382.1 Mb for matrix and 4047.6 Mb for DataFrame-Rle for EPISCOPE data).
 ## TODO: Compute approximate memory usage.
 ## TODO: Check that all files only contain either strand %in% '*' or strand 
 ## %in% c('+', '-'); otherwise the resulting object is a bit of a mess.
