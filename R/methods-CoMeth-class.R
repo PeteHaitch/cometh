@@ -312,7 +312,7 @@ combineStrands <- function(x, sort = TRUE) {
   # plus_only and neg_only are with respect to x.
   plus_only <- subjectHits(plus_ol)[countQueryHits(ol) == 0]
   neg_only <- subjectHits(neg_ol)[countSubjectHits(ol) == 0]
-  # Order is both, plus_only, neg_only
+  # Order is both, plus_only, neg_only.
   # neg_only m-tuples need to be shifted -1L (wrt '+' strand).
   rowData <- unstrand(c(y[[1]][queryHits(ol)], y[[1]][countQueryHits(ol) == 0], 
           shift(y[[2]][countSubjectHits(ol) == 0], shift = -1L)))
@@ -445,3 +445,9 @@ setMethod("show", "CoMeth", function(object){
   else cat("colnames: NULL\n")
   scat("colData names(%d): %s\n", names(colData(object)))
 })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Intra range methods
+###
+
+## TODO: Check that these can all be safely inherited from SummarizedExperiment.
