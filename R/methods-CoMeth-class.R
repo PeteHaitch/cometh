@@ -257,6 +257,8 @@ setMethod("getCoverage", "CoMeth", function(x) {
 ## TODO: Should this be a function or a method?
 ## TODO: Figure out where bplapply can be effectively (and safely) subbed in 
 ## for lapply.
+## TODO: Should be possible to do this separately (in paralell?) for each 
+## chromosome.
 #' Combine counts across strand.
 #' 
 #' @description 
@@ -309,7 +311,9 @@ combineStrands <- function(x, sort = TRUE) {
                      type = 'equal')
   plus_ol <- findOverlaps(y[[1]], rowData(x), type = 'equal')
   neg_ol <- findOverlaps(y[[2]], rowData(x), type = 'equal')
-  # plus_only and neg_only are with respect to x.
+  # plus_both, neg_both, plus_only and neg_only are with respect to x.
+  plus_both <- subjectHits(plus_ol)[countQueryHits(ol) > 0]
+  neg_both <- subjectHits(neg_ol)[countSubjectHits(ol) > 0]
   plus_only <- subjectHits(plus_ol)[countQueryHits(ol) == 0]
   neg_only <- subjectHits(neg_ol)[countSubjectHits(ol) == 0]
   # Order is both, plus_only, neg_only.
@@ -318,10 +322,10 @@ combineStrands <- function(x, sort = TRUE) {
           shift(y[[2]][countSubjectHits(ol) == 0], shift = -1L)))
   ci <- grep(pattern = '^[MU]', x = names(assays(x)), value = TRUE)
   ## TODO: Is parallelisation worth it?
-  both_assays <- lapply(assays(x)[ci], function(counts, ol) {
-    counts[queryHits(ol), , drop = FALSE] + 
-      counts[subjectHits(ol), , drop = FALSE]
-  }, ol = ol)
+  both_assays <- lapply(assays(x)[ci], function(counts, plus_both, neg_both) {
+    counts[plus_both, , drop = FALSE] +
+      counts[neg_both, , drop = FALSE]
+  }, plus_both = plus_both, neg_both = neg_both)
   plus_assays <- lapply(assays(x)[ci], function(counts, plus_only) {
     counts[plus_only, , drop = FALSE]
   }, plus_only = plus_only)
