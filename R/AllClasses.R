@@ -2,7 +2,7 @@
 ### All classes 
 ### =========================================================================
 
-## TODO: Should I define prototypes in class definitions?
+## TODO: Should I define prototypes in class definitions? See http://stackoverflow.com/questions/18893290/reference-class-with-custom-field-classes-in-r/18894814#18894814 for similar point. Yes, otherwise S4 inheritance doesn't work.
 ## TODO: Define MTuplesList; check split(MTuples) produces an MTuplesList.
 
 ### -------------------------------------------------------------------------

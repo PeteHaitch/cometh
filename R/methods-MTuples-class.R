@@ -454,7 +454,8 @@ setMethod("show", "MTuples", function(object) {
 ## produce an error message rather than calling the GRanges method and doing 
 ## something odd.
 
-## TODO: This may not the most efficient method, cf. shift for GRanges.
+## TODO: This may not the most efficient method, cf. shift for GRanges. Read 
+## http://stackoverflow.com/questions/10961842/how-to-define-the-subset-operators-for-a-s4-class/10961998#10961998 to see how to use initialise.
 ## TODO: Document in MTuples
 #' @export
 #' @rdname MTuples
