@@ -2,6 +2,8 @@
 ## names. Otherwise a sample name with '.' in it will break the code. Whatever 
 ## delimiter I end up using, add a check that this delimiter is not present in 
 ## any of the sample_names.
+## TODO: Read data.table::fread source for how it handles remote files, can 
+## use same idea for gzip/bzip files.
 ## TODO: Remove dependency on R.utils::gunzip and improve gunzipping and temp
 ## file handling.
 ## TODO: Add bzip support.
